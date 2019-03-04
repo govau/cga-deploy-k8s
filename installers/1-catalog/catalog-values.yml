@@ -1,0 +1,9 @@
+apiserver:
+  storage:
+    etcd:
+      # use the cluster from the etcd-operator chart
+      servers: http://etcd-cluster-client:2379
+      useEmbedded: false
+
+controllerManager:
+  operationPollingMaximumBackoffDuration: 2m

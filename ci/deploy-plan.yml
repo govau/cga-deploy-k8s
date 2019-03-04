@@ -1,0 +1,26 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: govau/cga-cli
+    tag: latest
+inputs:
+- name: charts
+- name: deploy-src
+- name: ops
+outputs:
+- name: tfplan
+params:
+  ALERTMANAGER_SLACK_API_URL:
+  AWS_ACCESS_KEY_ID:
+  AWS_DEFAULT_REGION: ap-southeast-2
+  AWS_SECRET_ACCESS_KEY:
+  ENV_NAME:
+  JUMPBOX_SSH_KEY:
+  JUMPBOX_SSH_PORT:
+  LETSENCRYPT_EMAIL:
+  SSO_GOOGLE_CLIENT_SECRET:
+  TERRAFORM_ACTION: plan
+run:
+  path: deploy-src/ci/deploy.sh

@@ -1,0 +1,17 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: govau/cga-cf-bosh-cli
+    tag: latest
+inputs:
+- name: deploy-src
+- name: ops
+outputs: []
+params:
+  AWS_ACCESS_KEY_ID:
+  AWS_SECRET_ACCESS_KEY:
+  ENV_NAME:
+run:
+  path: deploy-src/ci/delete.sh

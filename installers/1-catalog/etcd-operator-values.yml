@@ -1,0 +1,13 @@
+deployments:
+  # for now dont worry about backups
+  backupOperator: false
+  restoreOperator: false
+customResources:
+  createEtcdClusterCRD: true
+etcdCluster:
+  # FIXME - with istio?
+  enableTLS: false # (this is the default)
+etcdOperator:
+  resources:
+    # Increased to avoid CPUThrottlingHigh alert
+    cpu: 200m

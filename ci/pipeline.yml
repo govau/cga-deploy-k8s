@@ -1,0 +1,155 @@
+groups: []
+resources:
+- name: deploy-src
+  type: git
+  source:
+    branch: master
+    uri: https://github.com/govau/cga-deploy-k8s
+- name: charts
+  type: git
+  source:
+    branch: master
+    uri: https://github.com/helm/charts
+- name: ops
+  type: git
+  source:
+    branch: master
+    paths:
+    - terraform/*.tf
+    - terraform/**/*.tf
+    - terraform/*.pub
+    - terraform/**/*.pub
+    - terraform/*.tpl
+    - terraform/**/*.tpl
+    - terraform/modules/platform/installer/**
+    private_key: ((ops-git-deploy-key.private_key))
+    uri: git@github.com:AusDTO/ops.git
+- name: tfplan-l
+  type: s3
+  source:
+    access_key_id: ((aws_access_key_id))
+    bucket: ((aws_concourse_terraform_bucket))
+    region_name: ap-southeast-2
+    secret_access_key: ((aws_secret_access_key))
+    server_side_encryption: AES256
+    versioned_file: l-cld/terraform.tfplan
+- name: after-midnight
+  type: time
+  source:
+    location: Australia/Sydney
+    start: 12:00 AM
+    stop: 1:00 AM
+resource_types: []
+jobs:
+- name: deploy-k
+  serial_groups:
+  - k
+  plan:
+  - do:
+    - get: ops
+      trigger: true
+    - get: deploy-src
+      trigger: true
+    - get: charts
+    - task: create-fake-tfplan
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: govau/cga-cli
+        run:
+          path: /bin/bash
+          args:
+          - -c
+          - # noop
+            # we dont do terraform plan + apply in k-cld, but a tfplan
+            # resource is still needed by the deploy-apply task
+        outputs:
+        - name: tfplan
+    - task: deploy-apply
+      file: deploy-src/ci/deploy-apply.yml
+      params:
+        ALERTMANAGER_SLACK_API_URL: ((alertmanager_slack_api_url))
+        AWS_ACCESS_KEY_ID: ((aws_access_key_id))
+        AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
+        ENV_NAME: k
+        JUMPBOX_SSH_KEY: ((jumpbox-key.private_key))
+        JUMPBOX_SSH_PORT: ((jumpbox-port))
+        LETSENCRYPT_EMAIL: ((letsencrypt_email))
+        SKIP_TERRAFORM_PLAN: 1
+        SSO_GOOGLE_CLIENT_SECRET: ((sso_google_client_secret_k))
+- name: delete-k
+  serial_groups:
+  - k
+  plan:
+  - do:
+    - get: ops
+    - get: deploy-src
+    - get: after-midnight
+      trigger: true
+    - task: delete
+      file: deploy-src/ci/delete.yml
+      params:
+        AWS_ACCESS_KEY_ID: ((aws_access_key_id))
+        AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
+        ENV_NAME: k
+- name: deploy-l-plan
+  serial_groups:
+  - l
+  plan:
+  - do:
+    - get: ops
+      passed:
+      - deploy-k
+    - get: deploy-src
+      passed:
+      - deploy-k
+    - get: charts
+      passed:
+      - deploy-k
+    - task: deploy-plan
+      file: deploy-src/ci/deploy-plan.yml
+      params:
+        ALERTMANAGER_SLACK_API_URL: ((alertmanager_slack_api_url))
+        AWS_ACCESS_KEY_ID: ((aws_access_key_id))
+        AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
+        ENV_NAME: l
+        JUMPBOX_SSH_KEY: ((jumpbox-key.private_key))
+        JUMPBOX_SSH_PORT: ((jumpbox-port))
+        LETSENCRYPT_EMAIL: ((letsencrypt_email))
+        SSO_GOOGLE_CLIENT_SECRET: ((sso_google_client_secret_k))
+        TERRAFORM_ACTION: plan
+    - put: tfplan-l
+      params:
+        file: tfplan/terraform.tfplan
+- name: deploy-l-apply
+  serial_groups:
+  - l
+  plan:
+  - do:
+    - get: ops
+      passed:
+      - deploy-l-plan
+    - get: deploy-src
+      passed:
+      - deploy-l-plan
+    - get: charts
+      passed:
+      - deploy-l-plan
+    - get: tfplan
+      passed:
+      - deploy-l-plan
+      resource: tfplan-l
+    - task: deploy-apply
+      file: deploy-src/ci/deploy-apply.yml
+      params:
+        ALERTMANAGER_SLACK_API_URL: ((alertmanager_slack_api_url))
+        AWS_ACCESS_KEY_ID: ((aws_access_key_id))
+        AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
+        ENV_NAME: l
+        JUMPBOX_SSH_KEY: ((jumpbox-key.private_key))
+        JUMPBOX_SSH_PORT: ((jumpbox-port))
+        LETSENCRYPT_EMAIL: ((letsencrypt_email))
+        SSO_GOOGLE_CLIENT_SECRET: ((sso_google_client_secret_k))
+        TERRAFORM_ACTION: apply
