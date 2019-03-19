@@ -1,0 +1,20 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: govau/cga-cli
+    tag: latest
+inputs:
+- name: deploy-src
+- name: ops
+outputs:
+- name: tfplan
+params:
+  AWS_ACCESS_KEY_ID:
+  AWS_DEFAULT_REGION: ap-southeast-2
+  AWS_SECRET_ACCESS_KEY:
+  ENV_NAME:
+  TERRAFORM_ACTION: plan
+run:
+  path: deploy-src/ci/terraform.sh
