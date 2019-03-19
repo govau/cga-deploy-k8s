@@ -45,9 +45,8 @@ cat <<EOF >> $HOME/.aws/credentials
 role_arn = arn:aws:iam::${AWS_ACCOUNT_ID}:role/Terraform
 source_profile = default
 EOF
-
+export AWS_PROFILE="${ENV_NAME}-cld"
 aws eks update-kubeconfig \
-  --profile ${ENV_NAME}-cld \
   --name eks \
   --role-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/Terraform
 
@@ -103,4 +102,17 @@ helm init --client-only
 # Update your local Helm chart repository cache
 helm repo update
 
-# TODO check all worker nodes are running the latest desired AMI
+# Check all worker nodes are running the latest desired AMI
+launch_configuration_name="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes --output json | jq -r .AutoScalingGroups[0].LaunchConfigurationName)"
+desired_ami_image_id="$(aws autoscaling describe-launch-configurations --launch-configuration-names "${launch_configuration_name}" --output json | jq -r .LaunchConfigurations[0].ImageId)"
+echo "desired_ami_image_id ${desired_ami_image_id}"
+actual_ami_image_ids="$(aws ec2 describe-instances  --filters "Name=tag:aws:autoscaling:groupName,Values=eks-worker-nodes" | jq -r '.Reservations[].Instances[].ImageId')"
+
+for actual_ami_image_id in ${actual_ami_image_ids}; do
+  echo "checking actual_ami_image_id ${actual_ami_image_id}"
+  if [[ ${actual_ami_image_id} != ${desired_ami_image_id} ]]; then
+    echo "Found a worker node that is not running the desired ami"
+    # todo handle this in the pipeline https://docs.aws.amazon.com/eks/latest/userguide/update-workers.html
+    exit 1
+  fi
+done
