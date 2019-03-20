@@ -21,6 +21,7 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
   resources="$(terraform state list)"
   blacklisted_resources=( \
     "aws_route53_zone.cld_subdomain" \
+    "aws_route53_zone.int_cld_subdomain" \
     "aws_vpc_peering_connection.to_mgmt" \
     "aws_vpc.platform" \
     )
