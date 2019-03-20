@@ -46,8 +46,7 @@ unset https_proxy
 
 trim_to_one_access_key $CI_IAM_USERNAME
 
-for ENV_NAME in k; do
-  set -x
+for ENV_NAME in k l; do
   echo ENV_NAME=$ENV_NAME
   CREDS_FILE="$SCRIPT_DIR/client_secret_${ENV_NAME}.json"
   echo CREDS_FILE=$CREDS_FILE
@@ -99,5 +98,5 @@ if [[ ! -v ALERTMANAGER_SLACK_API_URL ]]; then
     exit 1
   fi
 else
-  set_credhub_value alertmanager_slack_api_url "${LETSENCRYPT_EMAIL}"
+  set_credhub_value alertmanager_slack_api_url "${ALERTMANAGER_SLACK_API_URL}"
 fi
