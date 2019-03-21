@@ -24,6 +24,7 @@ helm upgrade --install --wait --timeout 300  \
 
 helm upgrade --install --wait --timeout 900  \
     --namespace istio-system \
+    -f ../values.yaml \
     istio install/kubernetes/helm/istio
 
 popd
