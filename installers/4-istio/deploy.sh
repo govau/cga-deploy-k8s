@@ -22,7 +22,7 @@ helm upgrade --install --wait --timeout 300  \
     --namespace istio-system \
     istio-init install/kubernetes/helm/istio-init
 
-helm upgrade --install --wait --timeout 300  \
+helm upgrade --install --wait --timeout 900  \
     --namespace istio-system \
     istio install/kubernetes/helm/istio
 
