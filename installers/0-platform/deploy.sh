@@ -106,7 +106,10 @@ helm repo update
 launch_configuration_name="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes --output json | jq -r .AutoScalingGroups[0].LaunchConfigurationName)"
 desired_ami_image_id="$(aws autoscaling describe-launch-configurations --launch-configuration-names "${launch_configuration_name}" --output json | jq -r .LaunchConfigurations[0].ImageId)"
 echo "desired_ami_image_id ${desired_ami_image_id}"
-actual_ami_image_ids="$(aws ec2 describe-instances  --filters "Name=tag:aws:autoscaling:groupName,Values=eks-worker-nodes" | jq -r '.Reservations[].Instances[].ImageId')"
+actual_ami_image_ids="$(aws ec2 describe-instances --filters \
+    "Name=tag:aws:autoscaling:groupName,Values=eks-worker-nodes" \
+    "Name=instance-state-name,Values=pending,running" \
+  | jq -r '.Reservations[].Instances[].ImageId')"
 
 for actual_ami_image_id in ${actual_ami_image_ids}; do
   echo "checking actual_ami_image_id ${actual_ami_image_id}"
