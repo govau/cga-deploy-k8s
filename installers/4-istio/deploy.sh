@@ -10,9 +10,8 @@ ISTIO_SHA256="9a578825488c85578460fdf7321ce14844f62b7083c7d9f919fe93bd76d938bc"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-pushd
+pushd "${SCRIPT_DIR}"
 
-cd "${SCRIPT_DIR}"
 curl -L https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-linux.tar.gz > istio.tgz
 echo "${ISTIO_SHA256}  istio.tgz" > istio.tgz.sha256
 shasum --check istio.tgz.sha256
