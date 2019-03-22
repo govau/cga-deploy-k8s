@@ -138,7 +138,7 @@ if [[ ${WORKER_NEEDS_UPDATING} == "1" ]]; then
   end=$((SECONDS+180))
   while :
   do
-    if [ "$(kubectl get nodes -o json | jq -r '.items | length')" -gte "${DOUBLE_MIN_SIZE}" ]; then
+    if (( "$(kubectl get nodes -o json | jq -r '.items | length')" >= "${DOUBLE_MIN_SIZE}" )); then
       break;
     fi
     if (( ${SECONDS} >= end )); then
