@@ -25,8 +25,10 @@ unset AWS_SECRET_ACCESS_KEY
 set -x
 
 pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
+  export TF_VAR_eks_worker_ami="$(cat ${SCRIPT_DIR}/../../eks-node-ami/id)"
+
   terraform init
-  if [[ -v SKIP_TERRAFORM_PLAN ]]; then
+  if [[  ${SKIP_TERRAFORM_PLAN} == "1" ]]; then
     # YOLO
     terraform apply -auto-approve
   else

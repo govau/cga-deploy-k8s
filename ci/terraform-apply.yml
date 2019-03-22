@@ -7,6 +7,7 @@ image_resource:
     tag: latest
 inputs:
 - name: deploy-src
+- name: eks-node-ami
 - name: ops
 - name: tfplan
 outputs: []

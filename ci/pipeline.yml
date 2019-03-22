@@ -46,11 +46,31 @@ resources:
     location: Australia/Sydney
     start: 12:00 AM
     stop: 1:00 AM
+- name: eks-node-ami
+  type: ami
+  check_every: 1h
+  source:
+    aws_access_key_id: ((aws_access_key_id))
+    aws_secret_access_key: ((aws_secret_access_key))
+    region: ap-southeast-2
+    filters:
+      # It doesnt seem to be documented who the owner of the official aws images is, so
+      # we use the owner of the previously published eks AMI.
+      # e.g. from `aws ec2 describe-images --image-ids ami-0e07b5081bb77d540`
+      # There's no guarantee it wont change in the future however.
+      owner-id: "602401143452"
+      is-public: true
+      state: available
+      name: amazon-eks-node-1.11* # Must match the eks kubernetes version
 resource_types:
 - name: slack-notification
   type: docker-image
   source:
     repository: cfcommunity/slack-notification-resource
+- name: ami
+  type: docker-image
+  source:
+    repository: govau/ami-resource
 jobs:
 - name: terraform-force-apply-k
   serial_groups:
@@ -62,6 +82,7 @@ jobs:
       resource: ops-terraform
     - get: deploy-src
       trigger: true
+    - get: eks-node-ami
     - task: create-fake-tfplan
       config:
         platform: linux
