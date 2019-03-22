@@ -125,7 +125,7 @@ if [[ ${WORKER_NEEDS_UPDATING} == "1" ]]; then
   # So the easiest way is to double the number of instances, and then scale back down
   # to the original size.
   echo "Scale up auto scaling group"
-  AUTOSCALING_GROUP_JSON="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes --output-json)"
+  AUTOSCALING_GROUP_JSON="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes)"
   STARTING_MIN_SIZE="$(echo ${AUTOSCALING_GROUP_JSON} | jq -r '.AutoScalingGroups[0].MinSize')"
   STARTING_MAX_SIZE="$(echo ${AUTOSCALING_GROUP_JSON} | jq -r '.AutoScalingGroups[0].MaxSize')"
   DOUBLE_MIN_SIZE="$((STARTING_MIN_SIZE * 2))"
