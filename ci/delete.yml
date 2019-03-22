@@ -3,7 +3,7 @@ platform: linux
 image_resource:
   type: docker-image
   source:
-    repository: govau/cga-cf-bosh-cli
+    repository: govau/cga-cli
     tag: latest
 inputs:
 - name: deploy-src
