@@ -101,20 +101,75 @@ helm init --client-only
 # Update your local Helm chart repository cache
 helm repo update
 
-# Check all worker nodes are running the latest desired AMI
-launch_configuration_name="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes --output json | jq -r .AutoScalingGroups[0].LaunchConfigurationName)"
-desired_ami_image_id="$(aws autoscaling describe-launch-configurations --launch-configuration-names "${launch_configuration_name}" --output json | jq -r .LaunchConfigurations[0].ImageId)"
-echo "desired_ami_image_id ${desired_ami_image_id}"
-actual_ami_image_ids="$(aws ec2 describe-instances --filters \
+echo "Check all worker nodes are running the latest desired AMI"
+
+LAUNCH_CONFIGURATION_NAME="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes --output json | jq -r .AutoScalingGroups[0].LaunchConfigurationName)"
+DESIRED_IMAGE_ID="$(aws autoscaling describe-launch-configurations --launch-configuration-names "${LAUNCH_CONFIGURATION_NAME}" --output json | jq -r .LaunchConfigurations[0].ImageId)"
+echo "DESIRED_IMAGE_ID ${DESIRED_IMAGE_ID}"
+ACTUAL_IMAGE_IDS="$(aws ec2 describe-instances --filters \
     "Name=tag:aws:autoscaling:groupName,Values=eks-worker-nodes" \
     "Name=instance-state-name,Values=pending,running" \
   | jq -r '.Reservations[].Instances[].ImageId')"
 
-for actual_ami_image_id in ${actual_ami_image_ids}; do
-  echo "checking actual_ami_image_id ${actual_ami_image_id}"
-  if [[ ${actual_ami_image_id} != ${desired_ami_image_id} ]]; then
-    echo "Found a worker node that is not running the desired ami"
-    # todo handle this in the pipeline https://docs.aws.amazon.com/eks/latest/userguide/update-workers.html
-    exit 1
+WORKER_NEEDS_UPDATING="0"
+for ACTUAL_IMAGE_ID in ${ACTUAL_IMAGE_IDS}; do
+  if [[ ${ACTUAL_IMAGE_ID} != ${DESIRED_IMAGE_ID} ]]; then
+    echo "Found a worker node running the wrong ami: ${ACTUAL_IMAGE_ID}"
+    WORKER_NEEDS_UPDATING="1"
+    break
   fi
 done
+
+if [[ ${WORKER_NEEDS_UPDATING} == "1" ]]; then
+  # The auto scaling group termination policy is set to OldestInstance.
+  # So the easiest way is to double the number of instances, and then scale back down
+  # to the original size.
+  echo "Scale up auto scaling group"
+  AUTOSCALING_GROUP_JSON="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes --output-json)"
+  STARTING_MIN_SIZE="$(echo ${AUTOSCALING_GROUP_JSON} | jq -r '.AutoScalingGroups[0].MinSize')"
+  STARTING_MAX_SIZE="$(echo ${AUTOSCALING_GROUP_JSON} | jq -r '.AutoScalingGroups[0].MaxSize')"
+  DOUBLE_MIN_SIZE="$((STARTING_MIN_SIZE * 2))"
+  DOUBLE_MAX_SIZE="$((STARTING_MAX_SIZE * 2))"
+  aws autoscaling update-auto-scaling-group \
+    --auto-scaling-group-name eks-worker-nodes \
+    --min-size "${DOUBLE_MIN_SIZE}" --max-size "${DOUBLE_MAX_SIZE}"
+
+  echo "Wait for the new nodes to join the cluster"
+  end=$((SECONDS+180))
+  while :
+  do
+    if [ "$(kubectl get nodes -o json | jq -r '.items | length')" -gte "${DOUBLE_MIN_SIZE}" ]; then
+      break;
+    fi
+    if (( ${SECONDS} >= end )); then
+      echo "Timeout: Wait for the new nodes to join the cluster"
+      exit 1
+    fi
+    sleep 5
+  done
+
+  # todo taint and drain the nodes with the old ami?
+
+  echo "Scale down auto scaling group"
+  aws autoscaling update-auto-scaling-group \
+    --auto-scaling-group-name eks-worker-nodes \
+    --min-size "${STARTING_MIN_SIZE}" --max-size "${STARTING_MAX_SIZE}"
+
+  # TODO - we can remove this confirmation check after we're happy this all works
+  echo "Sleep while we wait for excess nodes to be terminated by the ASG"
+  sleep 300
+
+  echo "Confirm all worker nodes are now running the desired ami"
+  ACTUAL_IMAGE_IDS="$(aws ec2 describe-instances  \
+    --filters "Name=tag:aws:autoscaling:groupName,Values=eks-worker-nodes" \
+    "Name=instance-state-name,Values=pending,running" \
+    | jq -r '.Reservations[].Instances[].ImageId')"
+  for ACTUAL_IMAGE_ID in ${ACTUAL_IMAGE_IDS}; do
+    if [[ ${ACTUAL_IMAGE_ID} != ${DESIRED_IMAGE_ID} ]]; then
+      echo "Found a worker node that is not running the desired ami"
+      exit 1
+    fi
+  done
+else
+  echo "Worker nodes are all running the desired ami"
+fi
