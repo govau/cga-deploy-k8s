@@ -1,6 +1,18 @@
+global:
+  k8sIngress:
+    enabled: true
+    enableHttps: true
+    gatewayName: ingressgateway
+
+certmanager:
+  enabled: true
+  email: weboperations+istio@digital.gov.au
+
 gateways:
   istio-ingressgateway:
-    type: ClusterIP
+    type: NodePort
+    sds:
+      enabled: true
     ports:
     - port: 80
       targetPort: 80
