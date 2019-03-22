@@ -4,9 +4,9 @@ global:
     enableHttps: true
     gatewayName: ingressgateway
 
-certmanager:
-  enabled: true
-  email: weboperations+istio@digital.gov.au
+#certmanager:
+#  enabled: true
+#  email: weboperations+istio@digital.gov.au
 
 gateways:
   istio-ingressgateway:
