@@ -5,32 +5,31 @@ set -o pipefail
 
 : "${ENV_NAME:?Need to set ENV_NAME}"
 : "${HELM_HOST:?Need to set HELM_HOST}"
-: "${JUMPBOX_SSH_KEY:?Need to set JUMPBOX_SSH_KEY}"
 : "${JUMPBOX_SSH_PORT:?Need to set JUMPBOX_SSH_PORT}"
+: "${PATH_TO_KEY:?Need to set PATH_TO_KEY}"
 : "${SSH:?Need to set SSH}"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 export PATH_TO_OPS=${SCRIPT_DIR}/../../../ops
 export JUMPBOX=bosh-jumpbox.${ENV_NAME}.cld.gov.au
-export PATH_TO_KEY=${PWD}/secret-jumpbox.pem
 
 # jumpbox should be available in dns
 nslookup ${JUMPBOX}
 
-# Tell the jumpbox to refresh its host cert now
-ssh \
-  -o UserKnownHostsFile=/dev/null \
-  -o StrictHostKeyChecking=no \
-  -o BatchMode=yes \
-  -i ${PATH_TO_KEY} \
-  -p ${JUMPBOX_SSH_PORT} \
-  ec2-user@${JUMPBOX} \
-  sudo /etc/ssh/refreshHostCert.sh
-
-# jumpbox should now have a valid host cert, and the SSH env var
-# used in other installers should now work
-${SSH} echo ok
+echo "Waiting for jumpbox"
+end=$((SECONDS+180))
+while :
+do
+  if [ "$(${SSH} echo ok)" ]; then
+    break;
+  fi
+  if (( ${SECONDS} >= end )); then
+    echo "Timeout: waiting for jumpbox"
+    exit 1
+  fi
+  sleep 5
+done
 
 # Run the platform installer
 pushd ${PATH_TO_OPS}/terraform/modules/platform/installer
