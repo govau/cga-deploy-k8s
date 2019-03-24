@@ -30,7 +30,7 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
   terraform init
   if [[  ${SKIP_TERRAFORM_PLAN} == "1" ]]; then
     # YOLO
-    terraform apply -auto-approve
+    terraform apply -auto-approve -input=false
   else
     if [ "$TERRAFORM_ACTION" != "plan" ] && \
         [ "$TERRAFORM_ACTION" != "apply" ]; then
@@ -42,8 +42,7 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
     TFPLAN="${TFPLANS_BUCKET_DIR}/terraform.tfplan"
 
     if [ "${TERRAFORM_ACTION}" = "plan" ]; then
-      terraform plan \
-        -out=${TFPLAN}
+      terraform plan -input=false -out=${TFPLAN}
 
       set +e
       terraform show ${TFPLAN} \
@@ -54,7 +53,7 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
     else
       echo "Applying terraform plan:"
       terraform show ${TFPLAN}
-      terraform apply ${TFPLAN}
+      terraform apply -input=false ${TFPLAN}
     fi
   fi
 popd
