@@ -9,6 +9,8 @@ set -o pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+SKIP_TERRAFORM_PLAN=${SKIP_TERRAFORM_PLAN:-0} # default to dont skip
+
 export PATH_TO_OPS=${SCRIPT_DIR}/../../ops
 
 # Put our AWS creds into a credentials file
@@ -29,6 +31,7 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
 
   terraform init
   if [[  ${SKIP_TERRAFORM_PLAN} == "1" ]]; then
+  # if [ -z ${SKIP_TERRAFORM_PLAN+x} ] && [ "${SKIP_TERRAFORM_PLAN}" == "1" ]; then
     # YOLO
     terraform apply -auto-approve -input=false
   else
