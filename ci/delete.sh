@@ -25,7 +25,7 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
     "aws_vpc_peering_connection.to_mgmt" \
     "aws_vpc.platform" \
     )
-  terraform_cmd="terraform destroy -auto-approve"
+  terraform_cmd="terraform destroy -auto-approve -input=false"
   for resource in $resources; do
     BLACKLISTED=0
     for blackedlisted_resource in ${blacklisted_resources[@]}; do
