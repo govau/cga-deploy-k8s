@@ -106,21 +106,22 @@ echo "Check all worker nodes are running the latest desired AMI"
 LAUNCH_CONFIGURATION_NAME="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes --output json | jq -r .AutoScalingGroups[0].LaunchConfigurationName)"
 DESIRED_IMAGE_ID="$(aws autoscaling describe-launch-configurations --launch-configuration-names "${LAUNCH_CONFIGURATION_NAME}" --output json | jq -r .LaunchConfigurations[0].ImageId)"
 echo "DESIRED_IMAGE_ID ${DESIRED_IMAGE_ID}"
-ACTUAL_IMAGE_IDS="$(aws ec2 describe-instances --filters \
+INSTANCE_IDS="$(aws ec2 describe-instances --filters \
     "Name=tag:aws:autoscaling:groupName,Values=eks-worker-nodes" \
     "Name=instance-state-name,Values=pending,running" \
-  | jq -r '.Reservations[].Instances[].ImageId')"
+  | jq -r '.Reservations[].Instances[].InstanceId')"
 
-WORKER_NEEDS_UPDATING="0"
-for ACTUAL_IMAGE_ID in ${ACTUAL_IMAGE_IDS}; do
+OLD_INSTANCE_IDS=()
+
+for INSTANCE_ID in ${INSTANCE_IDS}; do
+  ACTUAL_IMAGE_ID="$(aws ec2 describe-instances --instance-ids "${INSTANCE_ID}" | jq -r .Reservations[].Instances[0].ImageId)"
   if [[ ${ACTUAL_IMAGE_ID} != ${DESIRED_IMAGE_ID} ]]; then
-    echo "Found a worker node running the wrong ami: ${ACTUAL_IMAGE_ID}"
-    WORKER_NEEDS_UPDATING="1"
-    break
+    echo "${INSTANCE_ID} ami is ${ACTUAL_IMAGE_ID}, not running the desired ami ${DESIRED_IMAGE_ID}"
+    OLD_INSTANCE_IDS+=("${INSTANCE_ID}")
   fi
 done
 
-if [[ ${WORKER_NEEDS_UPDATING} == "1" ]]; then
+if [ ${#OLD_INSTANCE_IDS[@]} -gt 0 ]; then
   # The auto scaling group termination policy is set to OldestInstance.
   # So the easiest way is to double the number of instances, and then scale back down
   # to the original size.
@@ -148,8 +149,23 @@ if [[ ${WORKER_NEEDS_UPDATING} == "1" ]]; then
     sleep 5
   done
 
-  # todo taint and drain the nodes with the old ami?
+  # todo check cluster dns provider has more than 1 replica?
 
+  # taint the old nodes (prevents pods being scheduled on them)
+  for INSTANCE_ID in "${OLD_INSTANCE_IDS[@]}"; do
+    PRIVATE_DNS_NAME="$(aws ec2 describe-instances --instance-ids "${INSTANCE_ID}" | jq -r .Reservations[].Instances[0].PrivateDnsName)"
+    kubectl taint nodes "${PRIVATE_DNS_NAME}" key=value:NoSchedule --overwrite=true
+  done
+
+  # drain running pods from the old nodes
+  for INSTANCE_ID in "${OLD_INSTANCE_IDS[@]}"; do
+    PRIVATE_DNS_NAME="$(aws ec2 describe-instances --instance-ids "${INSTANCE_ID}" | jq -r .Reservations[].Instances[0].PrivateDnsName)"
+    kubectl drain "${PRIVATE_DNS_NAME}" \
+      --ignore-daemonsets --delete-local-data \
+      --force --timeout=15m
+  done
+
+  # Should now be safe to terminate the old nodes
   echo "Scale down auto scaling group"
   aws autoscaling update-auto-scaling-group \
     --auto-scaling-group-name eks-worker-nodes \
