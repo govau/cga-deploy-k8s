@@ -158,6 +158,10 @@ jobs:
       passed:
       - terraform-force-apply-k
       trigger: true
+    - get: eks-node-ami
+      passed:
+      - terraform-force-apply-k
+      trigger: true
     - task: terraform-plan
       file: deploy-src/ci/terraform-plan.yml
       params:
@@ -177,6 +181,9 @@ jobs:
       - terraform-plan-l
       resource: ops-terraform
     - get: deploy-src
+      passed:
+      - terraform-plan-l
+    - get: eks-node-ami
       passed:
       - terraform-plan-l
     - get: tfplan
