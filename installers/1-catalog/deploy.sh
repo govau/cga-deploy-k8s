@@ -47,8 +47,8 @@ pushd catalog-acceptance-test
   git checkout v0.1.42
 
   # clean up just in case
-  kubectl delete ClusterServiceBroker atest-ups-broker || true
-  helm delete atest-ups-broker --purge || true
+  kubectl delete ClusterServiceBroker atest-ups-broker >/dev/null 2>&1 || true
+  helm delete atest-ups-broker --purge >/dev/null 2>&1 || true
 
   helm install ./charts/ups-broker --name atest-ups-broker --namespace atest-ups-broker
 
