@@ -14,6 +14,8 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
 
   terraform init
 
+  export TF_VAR_eks_worker_ami="not-used"
+
   # Destroy as much as we can automatically recreate.
   # We use a blacklist of resources we want to exclude.
   # All resources in terraform state not in the black list
