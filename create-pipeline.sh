@@ -25,6 +25,4 @@ done
 
 fly -t mcld unpause-pipeline -p $PIPELINE
 
-fly -t mcld trigger-job -j $PIPELINE/deploy-k
-
 unset https_proxy
