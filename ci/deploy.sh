@@ -50,6 +50,15 @@ for installer in ${SCRIPT_DIR}/../installers/*/deploy.sh; do
   SSH="${SSH}" \
   SSO_GOOGLE_CLIENT_SECRET="${SSO_GOOGLE_CLIENT_SECRET}" \
   ${installer}
+
+  tester="$(dirname "${installer}")/test.sh"
+  if [ -f "${tester}" ]; then
+    echo "Running tester ${tester}"
+    HELM_HOST=":44134" \
+    ${tester}
+  else
+    echo "No tester found: ${tester}"
+  fi
 done
 
 echo "Killing tiller"
