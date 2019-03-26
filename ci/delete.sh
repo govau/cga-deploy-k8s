@@ -16,6 +16,29 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
 
   export TF_VAR_eks_worker_ami="not-used"
 
+  # Put our AWS creds into a credentials file
+  # Add profile to assume role in the child aws account
+  export AWS_ACCOUNT_ID="$(terraform output aws_account_id)"
+  mkdir -p $HOME/.aws
+  cat <<EOF >> $HOME/.aws/credentials
+[default]
+aws_access_key_id = ${AWS_ACCESS_KEY_ID}
+aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+[${ENV_NAME}-cld]
+role_arn = arn:aws:iam::${AWS_ACCOUNT_ID}:role/Terraform
+source_profile = default
+EOF
+  unset AWS_ACCESS_KEY_ID
+  unset AWS_SECRET_ACCESS_KEY
+
+  # Terraform is set to not delete etcd backup bucket, so delete it here
+  if [[ $(terraform state list | grep "aws_s3_bucket.catalog_etcd_operator") != "" ]]; then
+    ETCD_BACKUP_BUCKET="$(terraform output k8s_catalog_etcd_operator_bucket_id)"
+    echo "Deleting ETCD_BACKUP_BUCKET ${ETCD_BACKUP_BUCKET}"
+    aws --profile "${ENV_NAME}-cld" s3 \
+      rb --force "s3://${ETCD_BACKUP_BUCKET}"
+  fi
+
   # Destroy as much as we can automatically recreate.
   # We use a blacklist of resources we want to exclude.
   # All resources in terraform state not in the black list
