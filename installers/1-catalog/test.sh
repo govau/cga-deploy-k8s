@@ -11,7 +11,7 @@ POD_NAME=etcd-ci-test
 
 # cleanup
 kubectl -n catalog delete pod ${POD_NAME} 2>/dev/null || true
-kubectl run -it --rm --env ETCDCTL_API=3 --namespace catalog ${POD_NAME} --image quay.io/coreos/etcd --restart=Never -- sh -c "etcdctl --endpoints http://etcd-cluster-client:2379 del ci-foo"
+kubectl run -it --rm --env ETCDCTL_API=3 --namespace catalog ${POD_NAME} --image quay.io/coreos/etcd --restart=Never -- sh -c "etcdctl --endpoints http://etcd-cluster-client:2379 del ci-foo" || true
 
 # Start a test pod
 kubectl -n catalog run --env ETCDCTL_API=3 --image quay.io/coreos/etcd ${POD_NAME} --restart=Never
