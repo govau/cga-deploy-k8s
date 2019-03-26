@@ -5,7 +5,7 @@ set -o pipefail
 
 : "${ENV_NAME:?Need to set ENV_NAME}"
 : "${HELM_HOST:?Need to set HELM_HOST}"
-: "${LETSENCRYPT_EMAIL:?Need to set LETSENCRYPT_EMAIL}"
+: "${SSH:?Need to set SSH}"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -21,6 +21,66 @@ echo "Waiting for etcd-operator to start"
 kubectl rollout status --namespace=catalog --timeout=2m \
         --watch deployment/catalog-etcd-operator-etcd-operator-etcd-operator
 
+ETCD_AWS_SECRET_NAME=catalog-etcd-operator-aws
+echo "Creating aws-secrets for etcd-operator backups if necessary"
+if [[ ! $(kubectl -n catalog get secret "${ETCD_AWS_SECRET_NAME}" 2>/dev/null) ]]; then
+  IAM_USER="catalog-etcd-operator" # todo could read this from the env instead of hardcoded?
+
+  output="$(aws --profile "${ENV_NAME}-cld" iam create-access-key --user-name "${IAM_USER}")"
+  aws_access_key_id="$(echo $output | jq -r .AccessKey.AccessKeyId)"
+  aws_secret_access_key="$(echo $output | jq -r .AccessKey.SecretAccessKey)"
+
+  cat << EOF > credentials
+[default]
+aws_access_key_id = ${aws_access_key_id}
+aws_secret_access_key = ${aws_secret_access_key}
+region = ap-southeast-2
+EOF
+
+  kubectl -n catalog create secret generic "${ETCD_AWS_SECRET_NAME}" \
+        --from-file credentials --dry-run -o yaml | kubectl apply -f -
+
+  rm credentials
+fi
+
+echo "Creating EtcdBackup resource"
+ETCD_BACKUP_BUCKET="$(${SSH} sdget catalog.k8s.cld.internal etcd-backup-bucket)"
+
+kubectl -n catalog apply -f <(cat <<EOF
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdBackup"
+metadata:
+  name: catalog-etcd-cluster-periodic-backup
+spec:
+  etcdEndpoints:
+  - http://etcd-cluster-client:2379
+  storageType: S3
+  backupPolicy:
+    # 0 > enable periodic backup
+    backupIntervalInSecond: 125
+    maxBackups: 4
+  s3:
+    # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
+    # e.g: "mybucket/etcd.backup"
+    path: "${ETCD_BACKUP_BUCKET}/etcd.backup"
+    awsSecret: "${ETCD_AWS_SECRET_NAME}"
+EOF
+)
+
+echo "Waiting for catalog etcd-worker pods to be created"
+end=$((SECONDS+180))
+while :
+do
+  if [[ "$(kubectl -n catalog get pods -l app=etcd -l etcd_cluster=etcd-cluster --field-selector=status.phase=Running -o json | jq -r '.items | length')" == "3" ]]; then
+    break;
+  fi
+  if (( ${SECONDS} >= end )); then
+    echo "Timeout: Waiting for catalog etcd-worker pods to be created"
+    exit 1
+  fi
+  sleep 5
+done
+
 echo "Deploying Service Catalog (needed by AWS servicebroker)"
 helm repo add svc-cat https://svc-catalog-charts.storage.googleapis.com
 helm upgrade --install --wait \
@@ -35,46 +95,3 @@ for DEPLOYMENT in $DEPLOYMENTS; do
     kubectl rollout status --namespace=catalog --timeout=2m \
         --watch deployment/${DEPLOYMENT}
 done
-
-# svcat should be able to get brokers
-svcat get brokers
-
-mkdir -p catalog-acceptance-test
-pushd catalog-acceptance-test
-  git clone https://github.com/kubernetes-incubator/service-catalog
-  cd service-catalog
-  # todo should we follow the version that's installed?
-  git checkout v0.1.42
-
-  # clean up just in case
-  kubectl delete ClusterServiceBroker atest-ups-broker >/dev/null 2>&1 || true
-  helm delete atest-ups-broker --purge >/dev/null 2>&1 || true
-
-  helm install ./charts/ups-broker --name atest-ups-broker --namespace atest-ups-broker
-
-  echo "Waiting for ups-broker to start"
-  kubectl rollout status --namespace=atest-ups-broker --timeout=2m \
-        --watch deployment/atest-ups-broker-ups-broker
-
-  # register a broker server with the catalog
-  # todo better to test with a namespace-scoped broker instead of cluster?
-  kubectl apply -f <(cat <<EOF
-apiVersion: servicecatalog.k8s.io/v1beta1
-kind: ClusterServiceBroker
-metadata:
-  name: atest-ups-broker
-spec:
-  url: http://atest-ups-broker-ups-broker.atest-ups-broker.svc.cluster.local
-EOF
-)
-
-  # svcat should be able to describe the broker
-  svcat describe broker atest-ups-broker
-
-  # svcat should be able to describe a clusterserviceclass
-  svcat describe class user-provided-service
-
-  # cleanup
-  kubectl delete ClusterServiceBroker atest-ups-broker
-  helm delete atest-ups-broker --purge
-popd
