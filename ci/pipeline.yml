@@ -83,6 +83,7 @@ jobs:
     - get: deploy-src
       trigger: true
     - get: eks-node-ami
+      trigger: true
     - task: create-fake-tfplan
       config:
         platform: linux
