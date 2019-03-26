@@ -67,7 +67,7 @@ spec:
 EOF
 )
 
-echo "Waiting for catalog etcd-worker pods to be created"
+echo "Waiting for catalog etcd cluster pods to be created"
 end=$((SECONDS+180))
 while :
 do
