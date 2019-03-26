@@ -1,3 +1,8 @@
+deployments:
+  # restore only needs to be deployed when
+  # a restore is needed
+  restoreOperator: false
+
 customResources:
   createBackupCRD: true
   createEtcdClusterCRD: true
