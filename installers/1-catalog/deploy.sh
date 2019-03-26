@@ -9,19 +9,11 @@ set -o pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+ETCD_AWS_SECRET_NAME=catalog-etcd-operator-aws
+ETCD_BACKUP_BUCKET="$(${SSH} sdget catalog.k8s.cld.internal etcd-backup-bucket)"
+
 helm dependency update charts/stable/etcd-operator
 
-echo "Deploying etcd-operator (needed by Service Catalog)"
-helm upgrade --install --wait \
-    --namespace catalog \
-    -f ${SCRIPT_DIR}/etcd-operator-values.yml \
-    catalog-etcd-operator charts/stable/etcd-operator
-
-echo "Waiting for etcd-operator to start"
-kubectl rollout status --namespace=catalog --timeout=2m \
-        --watch deployment/catalog-etcd-operator-etcd-operator-etcd-operator
-
-ETCD_AWS_SECRET_NAME=catalog-etcd-operator-aws
 echo "Creating aws-secrets for etcd-operator backups if necessary"
 if [[ ! $(kubectl -n catalog get secret "${ETCD_AWS_SECRET_NAME}" 2>/dev/null) ]]; then
   IAM_USER="catalog-etcd-operator" # todo could read this from the env instead of hardcoded?
@@ -43,29 +35,54 @@ EOF
   rm credentials
 fi
 
-echo "Creating EtcdBackup resource"
-ETCD_BACKUP_BUCKET="$(${SSH} sdget catalog.k8s.cld.internal etcd-backup-bucket)"
-
-kubectl -n catalog apply -f <(cat <<EOF
-apiVersion: "etcd.database.coreos.com/v1beta2"
-kind: "EtcdBackup"
-metadata:
-  name: catalog-etcd-cluster-periodic-backup
-spec:
-  etcdEndpoints:
-  - http://etcd-cluster-client:2379
-  storageType: S3
-  backupPolicy:
-    # 0 > enable periodic backup
-    backupIntervalInSecond: 125
-    maxBackups: 4
-  s3:
-    # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
-    # e.g: "mybucket/etcd.backup"
-    path: "${ETCD_BACKUP_BUCKET}/etcd.backup"
-    awsSecret: "${ETCD_AWS_SECRET_NAME}"
+cat << EOF > etcd-values.yml
+deployments:
+  # restore only needs to be deployed when
+  # a restore is needed
+  restoreOperator: false
+customResources:
+  createBackupCRD: true
+  createEtcdClusterCRD: true
+etcdCluster:
+  # FIXME - with istio?
+  enableTLS: false # (this is the default)
+backupOperator:
+  image:
+    tag: v0.9.4 # required for periodic backups
+  spec:
+    etcdEndpoints:
+    - http://etcd-cluster-client:2379
+    storageType: S3
+    backupPolicy:
+      # 0 > enable periodic backup
+      backupIntervalInSecond: 125
+      maxBackups: 4
+    s3:
+      # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
+      # e.g: "mybucket/etcd.backup"
+      # s3Bucket: "${ETCD_BACKUP_BUCKET}"
+      path: "${ETCD_BACKUP_BUCKET}/etcd.backup"
+      awsSecret: "${ETCD_AWS_SECRET_NAME}"
+etcdOperator:
+  image:
+    tag: v0.9.4 # required for periodic backups
+  resources:
+    # Increased to avoid CPUThrottlingHigh alert
+    cpu: 200m
+restoreOperator:
+  image:
+    tag: v0.9.4 # required for periodic backups
 EOF
-)
+
+echo "Deploying etcd-operator (needed by Service Catalog)"
+helm upgrade --install --wait --force \
+    --namespace catalog \
+    -f etcd-values.yml \
+    catalog-etcd-operator charts/stable/etcd-operator
+
+echo "Waiting for etcd-operator to start"
+kubectl rollout status --namespace=catalog --timeout=2m \
+        --watch deployment/catalog-etcd-operator-etcd-operator-etcd-operator
 
 echo "Waiting for catalog etcd cluster pods to be created"
 end=$((SECONDS+180))
