@@ -122,9 +122,8 @@ for INSTANCE_ID in ${INSTANCE_IDS}; do
 done
 
 if [ ${#OLD_INSTANCE_IDS[@]} -gt 0 ]; then
-  # The auto scaling group termination policy is set to OldestInstance.
-  # So the easiest way is to double the number of instances, and then scale back down
-  # to the original size.
+  # Double the number of instances by scaling the asg, drain pods from the old
+  # worker nodes, and then delete them.
   echo "Scale up auto scaling group"
   AUTOSCALING_GROUP_JSON="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes)"
   STARTING_MIN_SIZE="$(echo ${AUTOSCALING_GROUP_JSON} | jq -r '.AutoScalingGroups[0].MinSize')"
@@ -162,18 +161,23 @@ if [ ${#OLD_INSTANCE_IDS[@]} -gt 0 ]; then
     PRIVATE_DNS_NAME="$(aws ec2 describe-instances --instance-ids "${INSTANCE_ID}" | jq -r .Reservations[].Instances[0].PrivateDnsName)"
     kubectl drain "${PRIVATE_DNS_NAME}" \
       --ignore-daemonsets --delete-local-data \
-      --force --timeout=15m
+      --force --timeout=10m
   done
 
   # Should now be safe to terminate the old nodes
+  for INSTANCE_ID in "${OLD_INSTANCE_IDS[@]}"; do
+    aws ec2 terminate-instances \
+    --instance-ids "${INSTANCE_ID}"
+  done
+
   echo "Scale down auto scaling group"
   aws autoscaling update-auto-scaling-group \
     --auto-scaling-group-name eks-worker-nodes \
     --min-size "${STARTING_MIN_SIZE}" --max-size "${STARTING_MAX_SIZE}"
 
   # TODO - we can remove this confirmation check after we're happy this all works
-  echo "Sleep while we wait for excess nodes to be terminated by the ASG"
-  sleep 300
+  echo "Sleep while we wait for the old nodes to be terminated"
+  sleep 120
 
   echo "Confirm all worker nodes are now running the desired ami"
   ACTUAL_IMAGE_IDS="$(aws ec2 describe-instances  \
