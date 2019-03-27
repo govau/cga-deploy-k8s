@@ -90,4 +90,3 @@ EOF
   kubectl delete ClusterServiceBroker atest-ups-broker
   helm delete atest-ups-broker --purge
 popd
-

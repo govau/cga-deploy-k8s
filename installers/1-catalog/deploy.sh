@@ -14,6 +14,11 @@ ETCD_BACKUP_BUCKET="$(${SSH} sdget catalog.k8s.cld.internal etcd-backup-bucket)"
 
 helm dependency update charts/stable/etcd-operator
 
+if ! kubectl get namespace catalog > /dev/null 2>&1 ; then
+    echo "Creating catalog namespace"
+    kubectl create namespace catalog
+fi
+
 echo "Creating aws-secrets for etcd-operator backups if necessary"
 if [[ ! $(kubectl -n catalog get secret "${ETCD_AWS_SECRET_NAME}" 2>/dev/null) ]]; then
   IAM_USER="catalog-etcd-operator" # todo could read this from the env instead of hardcoded?
