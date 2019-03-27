@@ -34,12 +34,11 @@ helm upgrade --install --wait --timeout 300 \
   cert-manager charts/stable/cert-manager
 
 echo "Installing cert issuers"
-kubectl apply -f <(cat <<EOF
+kubectl -n cert-manager apply -f <(cat <<EOF
 apiVersion: certmanager.k8s.io/v1alpha1
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-prod
-  namespace: cert-manager
 spec:
   acme:
     email: ${LETSENCRYPT_EMAIL}
@@ -52,7 +51,6 @@ apiVersion: certmanager.k8s.io/v1alpha1
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-staging
-  namespace: cert-manager
 spec:
   acme:
     email: ${LETSENCRYPT_EMAIL}
