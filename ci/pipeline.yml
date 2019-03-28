@@ -222,4 +222,4 @@ jobs:
         JUMPBOX_SSH_KEY: ((jumpbox-key.private_key))
         JUMPBOX_SSH_PORT: ((jumpbox-port))
         LETSENCRYPT_EMAIL: ((letsencrypt_email))
-        SSO_GOOGLE_CLIENT_SECRET: ((sso_google_client_secret_k))
+        SSO_GOOGLE_CLIENT_SECRET: ((sso_google_client_secret_l))
