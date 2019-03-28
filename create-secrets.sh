@@ -79,8 +79,6 @@ EOF
 
 done
 
-exit 0
-
 echo "Ensuring letsencrypt email is set if its in our env"
 if [[ ! -v LETSENCRYPT_EMAIL ]]; then
   if ! https_proxy=socks5://localhost:8112 credhub get -n "/concourse/apps/${PIPELINE}/letsencrypt_email" > /dev/null 2>&1 ; then
