@@ -74,7 +74,7 @@ EOF
   else
     echo $CREDS_FILE found
     SSO_GOOGLE_CLIENT_SECRET="$(cat ${CREDS_FILE})"
-  set_credhub_value "sso_google_client_secret_${ENV_NAME}" "${SSO_GOOGLE_CLIENT_SECRET}"
+    set_credhub_value "sso_google_client_secret_${ENV_NAME}" "${SSO_GOOGLE_CLIENT_SECRET}"
   fi
 
 done
