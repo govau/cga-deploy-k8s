@@ -103,6 +103,22 @@ do
   sleep 5
 done
 
+# Add a poddisruptionbudget on the etcd cluster pods to
+# maintain quorum
+kubectl -n catalog apply -f <(cat <<EOF
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: etcd-cluster
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: etcd
+      etcd_cluster: etcd-cluster
+EOF
+)
+
 echo "Deploying Service Catalog (needed by AWS servicebroker)"
 helm repo add svc-cat https://svc-catalog-charts.storage.googleapis.com
 helm upgrade --install --wait \
