@@ -4,12 +4,24 @@ global:
     enableHttps: true
     gatewayName: ingressgateway
 
-#certmanager:
+# certmanager:
+#  replicaCount: 2 # Must be greater than PodDisruptionBudget minAvailable
 #  enabled: true
 #  email: weboperations+istio@digital.gov.au
 
+galley:
+  replicaCount: 2 # Must be greater than PodDisruptionBudget minAvailable
+
+mixer:
+  policy:
+    autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
+  telemetry:
+    autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
+pilot:
+  autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
 gateways:
   istio-ingressgateway:
+    autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
     type: NodePort
     sds:
       enabled: true
