@@ -96,3 +96,10 @@ rules:
   - '*'
 EOF
 )
+
+echo "Waiting for prometheus-operator deployments to start"
+DEPLOYMENTS="$(kubectl -n prometheus-operator get deployments -o json | jq -r .items[].metadata.name)"
+for DEPLOYMENT in $DEPLOYMENTS; do
+    kubectl rollout status --namespace=prometheus-operator --timeout=2m \
+        --watch deployment/${DEPLOYMENT}
+done
