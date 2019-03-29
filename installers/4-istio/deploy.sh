@@ -22,9 +22,22 @@ helm upgrade --install --wait --timeout 300  \
     --namespace istio-system \
     istio-init install/kubernetes/helm/istio-init
 
+echo "Waiting for istio-system jobs to finish"
+JOBS="$(kubectl -n istio-system get jobs -o json | jq -r .items[].metadata.name)"
+for JOB in $JOBS; do
+  kubectl -n istio-system wait --for=condition=complete --timeout=30s "job/${JOB}"
+done
+
 helm upgrade --install --wait --timeout 900  \
     --namespace istio-system \
     -f ../values.yaml \
     istio install/kubernetes/helm/istio
+
+echo "Waiting for istio-system deployments to start"
+DEPLOYMENTS="$(kubectl -n istio-system get deployments -o json | jq -r .items[].metadata.name)"
+for DEPLOYMENT in $DEPLOYMENTS; do
+    kubectl rollout status --namespace=istio-system --timeout=2m \
+        --watch deployment/${DEPLOYMENT}
+done
 
 popd
