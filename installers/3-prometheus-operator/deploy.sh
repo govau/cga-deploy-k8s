@@ -31,7 +31,7 @@ alertmanager:
           storageClassName: gp2
           resources:
             requests:
-              storage: 1Gi
+              storage: 5Gi
   config:
     global:
       slack_api_url: "${ALERTMANAGER_SLACK_API_URL}"
