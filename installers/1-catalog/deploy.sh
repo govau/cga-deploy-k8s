@@ -47,10 +47,11 @@ deployments:
   restoreOperator: false
 customResources:
   createBackupCRD: true
-  createEtcdClusterCRD: true
-etcdCluster:
-  # FIXME - with istio?
-  enableTLS: false # (this is the default)
+
+  # The chart cluster does not seem to support podAntiAffinity, so we
+  # we will create our own below
+  createEtcdClusterCRD: false
+
 backupOperator:
   image:
     tag: v0.9.4 # required for periodic backups
@@ -89,19 +90,28 @@ echo "Waiting for etcd-operator to start"
 kubectl rollout status --namespace=catalog --timeout=2m \
         --watch deployment/catalog-etcd-operator-etcd-operator-etcd-operator
 
-echo "Waiting for catalog etcd cluster pods to be created"
-end=$((SECONDS+180))
-while :
-do
-  if [[ "$(kubectl -n catalog get pods -l app=etcd -l etcd_cluster=etcd-cluster --field-selector=status.phase=Running -o json | jq -r '.items | length')" == "3" ]]; then
-    break;
-  fi
-  if (( ${SECONDS} >= end )); then
-    echo "Timeout: Waiting for catalog etcd-worker pods to be created"
-    exit 1
-  fi
-  sleep 5
-done
+kubectl -n catalog apply -f <(cat <<EOF
+apiVersion: etcd.database.coreos.com/v1beta2
+kind: EtcdCluster
+metadata:
+  name: etcd-cluster
+spec:
+  size: 3
+  pod:
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+          matchExpressions:
+          - key: etcd_cluster
+            operator: In
+            values:
+            - etcd-cluster
+          topologyKey: kubernetes.io/hostname
+EOF
+)
+
+kubectl -n catalog wait --for=condition=Available --timeout=2m "EtcdCluster/etcd-cluster"
 
 # Add a poddisruptionbudget on the etcd cluster pods to
 # maintain quorum
