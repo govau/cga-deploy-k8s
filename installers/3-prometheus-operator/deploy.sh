@@ -103,3 +103,18 @@ for DEPLOYMENT in $DEPLOYMENTS; do
     kubectl rollout status --namespace=prometheus-operator --timeout=2m \
         --watch deployment/${DEPLOYMENT}
 done
+
+echo "Waiting for prometheus-operator pods to be running"
+end=$((SECONDS+120))
+while :
+do
+  if [[ "$(kubectl -n prometheus-operator get pods --field-selector=status.phase!=Running -o json | jq -r '.items | length')" == "0" ]]; then
+    echo "done"
+    break;
+  fi
+  if (( ${SECONDS} >= end )); then
+    echo "Timeout: Waiting for prometheus-operator pods to be running"
+    exit 1
+  fi
+  sleep 5
+done
