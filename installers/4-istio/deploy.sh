@@ -33,11 +33,10 @@ helm upgrade --install --wait --timeout 900  \
     -f ../values.yaml \
     istio install/kubernetes/helm/istio
 
-echo "Waiting for istio-system deployments to start"
-DEPLOYMENTS="$(kubectl -n istio-system get deployments -o json | jq -r .items[].metadata.name)"
-for DEPLOYMENT in $DEPLOYMENTS; do
-    kubectl rollout status --namespace=istio-system --timeout=2m \
-        --watch deployment/${DEPLOYMENT}
+echo "Wait for istio-system pods to be ready"
+PODS="$(kubectl -n istio-system get pods -o json | jq -r .items[].metadata.name)"
+for POD in $PODS; do
+  kubectl -n istio-system wait --for=condition=complete --timeout=30s "pod/${POD}"
 done
 
 popd
