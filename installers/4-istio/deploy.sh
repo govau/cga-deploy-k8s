@@ -36,7 +36,7 @@ helm upgrade --install --wait --timeout 900  \
 echo "Wait for istio-system pods to be ready"
 PODS="$(kubectl -n istio-system get pods -o json | jq -r .items[].metadata.name)"
 for POD in $PODS; do
-  kubectl -n istio-system wait --for=condition=complete --timeout=30s "pod/${POD}"
+  kubectl -n istio-system wait --for=condition=complete --timeout=60s "pod/${POD}"
 done
 
 popd
