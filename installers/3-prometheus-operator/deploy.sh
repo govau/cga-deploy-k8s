@@ -25,6 +25,13 @@ alertmanager:
   alertmanagerSpec:
     externalUrl: https://alertmanager.sso.${ENV_NAME}.cld.gov.au
     retention: 336h # 14 days
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp2
+          resources:
+            requests:
+              storage: 1Gi
   config:
     global:
       slack_api_url: "${ALERTMANAGER_SLACK_API_URL}"
@@ -68,6 +75,13 @@ prometheus:
     retention: 14d
     ruleNamespaceSelector:
       any: true
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp2
+          resources:
+            requests:
+              storage: 40Gi
 EOF
 
 helm dependency update charts/stable/prometheus-operator
