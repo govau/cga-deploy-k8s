@@ -31,6 +31,10 @@ EOF
   unset AWS_ACCESS_KEY_ID
   unset AWS_SECRET_ACCESS_KEY
 
+  pwd
+  echo "Will delete ${ENV_NAME}-cld in 60 seconds..."
+  sleep 60
+
   # Terraform is set to not delete etcd backup bucket, so delete it here
   if [[ $(terraform state list | grep "aws_s3_bucket.catalog_etcd_operator") != "" ]]; then
     ETCD_BACKUP_BUCKET="$(terraform output k8s_catalog_etcd_operator_bucket_id)"
@@ -66,9 +70,7 @@ EOF
     fi
   done
 
-  pwd
-  echo "Will 'terraform destroy' ${ENV_NAME}-cld in 60 seconds..."
-  sleep 60
+  echo terraform_cmd: $terraform_cmd
 
   $terraform_cmd
 popd
