@@ -27,6 +27,7 @@ aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}
 [${ENV_NAME}-cld]
 role_arn = arn:aws:iam::${AWS_ACCOUNT_ID}:role/Terraform
 source_profile = default
+region = ap-southeast-2
 EOF
   unset AWS_ACCESS_KEY_ID
   unset AWS_SECRET_ACCESS_KEY
@@ -35,12 +36,38 @@ EOF
   echo "Will delete ${ENV_NAME}-cld in 60 seconds..."
   sleep 60
 
+  # there is a bug in the provider when doing a terraform destroy with a dependant security group.
+  # As a workaround, just delete the asg here outside of terraform first.
+  if [[ "$(aws --profile "${ENV_NAME}-cld" autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes 2>/dev/null | jq -r '.AutoScalingGroups | length')" == "1" ]]; then
+    aws --profile "${ENV_NAME}-cld" autoscaling delete-auto-scaling-group --auto-scaling-group-name eks-worker-nodes --force-delete
+
+    echo "Wait for the eks worker auto scaling group to be deleted"
+    end=$((SECONDS+1800))
+    while :
+    do
+      if [[ "$(aws --profile "${ENV_NAME}-cld" autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes 2>/dev/null | jq -r '.AutoScalingGroups[0].Status')" != "Delete in progress" ]]; then
+        echo ""
+        break;
+      fi
+      echo -n "."
+      if (( ${SECONDS} >= end )); then
+        echo "Timeout: Wait for the eks worker auto scaling group to be deleted"
+        exit 1
+      fi
+      sleep 5
+    done
+  fi
+
   # Terraform is set to not delete etcd backup bucket, so delete it here
   if [[ $(terraform state list | grep "aws_s3_bucket.catalog_etcd_operator") != "" ]]; then
     ETCD_BACKUP_BUCKET="$(terraform output k8s_catalog_etcd_operator_bucket_id)"
-    echo "Deleting ETCD_BACKUP_BUCKET ${ETCD_BACKUP_BUCKET}"
-    aws --profile "${ENV_NAME}-cld" s3 \
-      rb --force "s3://${ETCD_BACKUP_BUCKET}"
+    if aws --profile "${ENV_NAME}-cld" s3api head-bucket --bucket "$ETCD_BACKUP_BUCKET" 2>/dev/null; then
+      echo "Deleting ETCD_BACKUP_BUCKET ${ETCD_BACKUP_BUCKET}"
+      aws --profile "${ENV_NAME}-cld" s3 \
+        rb --force "s3://${ETCD_BACKUP_BUCKET}"
+    else
+      echo "Skipping deleting ETCD_BACKUP_BUCKET"
+    fi
   fi
 
   # Destroy as much as we can automatically recreate.
