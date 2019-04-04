@@ -12,7 +12,7 @@ svcat describe broker aws-servicebroker
 svcat sync broker aws-servicebroker
 
 echo "Wait for at least one entry in the marketplace"
-end=$((SECONDS+5))
+end=$((SECONDS+300))
 while :
 do
   if (( "$(svcat marketplace -o json | jq '. | length')" > "0" )); then
