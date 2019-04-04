@@ -9,16 +9,18 @@ echo "Test aws-servicebroker"
 
 svcat describe broker aws-servicebroker
 
-echo "Wait for at least one entry in the marketplace"
+echo "Wait for at least one service broker class"
 end=$((SECONDS+300))
 while :
 do
-  if (( "$(svcat marketplace -o json | jq '. | length')" > "0" )); then
+  if (( $(svcat get classes --scope cluster -o json | jq -r '. | length') >= 1 )); then
+    echo ""
     break;
   fi
   if (( ${SECONDS} >= end )); then
-    echo "Timeout: Wait for at least one entry in the marketplace"
+    echo "Timeout: Wait for at least one service broker class"
     exit 1
   fi
+  echo -n "."
   sleep 5
 done
