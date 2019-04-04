@@ -29,6 +29,7 @@ resources:
     branch: master
     paths:
     - terraform/modules/platform/installer/**
+    - aws-servicebroker/**
     private_key: ((ops-git-deploy-key.private_key))
     uri: git@github.com:AusDTO/ops.git
 - name: tfplan-l
