@@ -76,11 +76,16 @@ for DEPLOYMENT in $DEPLOYMENTS; do
         --watch deployment/${DEPLOYMENT}
 done
 
-echo "TODO Installing aws-servicebroker templates"
-# ${SCRIPT_DIR}/install_awsbroker_templates.sh
+kubectl wait --for=condition=ready --timeout=60s "ClusterServiceBrokers/aws-servicebroker"
 
-# svcat should be able to describe the broker
-svcat describe broker aws-servicebroker
+echo "Installing aws-servicebroker templates"
+S3_BUCKET="$($SSH sdget awsbroker.cld.internal templatebucket)"
+VPC_ID="$(${SSH} sdget net.cld.internal vpc-id)"
+RDS_SUBNET_GROUP="$(${SSH} sdget rds.net.cld.internal subnetgroup)"
+ENV_SUBNET_NUMBER="$(${SSH} sdget env.cld.internal subnet-number)"
 
-# todo svcat should be able to describe a clusterserviceclass
-# svcat describe class name
+VPC_ID="${VPC_ID}" \
+RDS_SUBNET_GROUP="${RDS_SUBNET_GROUP}" \
+ENV_SUBNET_NUMBER="${ENV_SUBNET_NUMBER}" \
+${SCRIPT_DIR}/../../../ops/aws-servicebroker/templates/generate_rdspostgresql.sh | \
+aws s3 --profile "${ENV_NAME}-cld" cp - s3://${S3_BUCKET}/templates/latest/rdspostgresql-main.yaml
