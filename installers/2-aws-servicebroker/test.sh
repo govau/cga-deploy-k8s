@@ -9,8 +9,6 @@ echo "Test aws-servicebroker"
 
 svcat describe broker aws-servicebroker
 
-svcat sync broker --scope cluster aws-servicebroker
-
 echo "Wait for at least one entry in the marketplace"
 end=$((SECONDS+300))
 while :

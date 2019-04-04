@@ -89,3 +89,5 @@ RDS_SUBNET_GROUP="${RDS_SUBNET_GROUP}" \
 ENV_SUBNET_NUMBER="${ENV_SUBNET_NUMBER}" \
 ${SCRIPT_DIR}/../../../ops/aws-servicebroker/templates/generate_rdspostgresql.sh | \
 aws s3 --profile "${ENV_NAME}-cld" cp - s3://${S3_BUCKET}/templates/latest/rdspostgresql-main.yaml
+
+svcat sync broker --scope cluster aws-servicebroker
