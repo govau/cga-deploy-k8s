@@ -53,10 +53,9 @@ svcat get brokers
 
 mkdir -p catalog-acceptance-test
 pushd catalog-acceptance-test
-  git clone https://github.com/kubernetes-incubator/service-catalog
-  cd service-catalog
   # todo should we follow the version that's installed?
-  git checkout v0.1.42
+  git clone --depth=1 --branch v0.1.42 https://github.com/kubernetes-incubator/service-catalog
+  cd service-catalog
 
   # clean up just in case
   kubectl delete ClusterServiceBroker atest-ups-broker >/dev/null 2>&1 || true
