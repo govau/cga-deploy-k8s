@@ -14,7 +14,7 @@ end=$((SECONDS+300))
 while :
 do
   if (( $(svcat get classes --scope cluster -o json | jq -r '. | length') >= 1 )); then
-    echo ""
+    echo "success"
     break;
   fi
   if (( ${SECONDS} >= end )); then
