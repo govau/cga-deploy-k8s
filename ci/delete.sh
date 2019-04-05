@@ -58,16 +58,27 @@ EOF
     done
   fi
 
-  # Terraform is set to not delete etcd backup bucket, so delete it here
+  # Remove the given bucket if it exists
+  function remove_bucket() {
+    BUCKET="$1"
+    if aws --profile "${ENV_NAME}-cld" s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+      echo "Deleting bucket ${BUCKET}"
+      aws --profile "${ENV_NAME}-cld" s3 \
+        rb --force "s3://${BUCKET}"
+    else
+      echo "Skipping deleting bucket ${BUCKET}"
+    fi
+  }
+
+  # Terraform is set to not delete buckets, so delete them here
   if [[ $(terraform state list | grep "aws_s3_bucket.catalog_etcd_operator") != "" ]]; then
     ETCD_BACKUP_BUCKET="$(terraform output k8s_catalog_etcd_operator_bucket_id)"
-    if aws --profile "${ENV_NAME}-cld" s3api head-bucket --bucket "$ETCD_BACKUP_BUCKET" 2>/dev/null; then
-      echo "Deleting ETCD_BACKUP_BUCKET ${ETCD_BACKUP_BUCKET}"
-      aws --profile "${ENV_NAME}-cld" s3 \
-        rb --force "s3://${ETCD_BACKUP_BUCKET}"
-    else
-      echo "Skipping deleting ETCD_BACKUP_BUCKET"
-    fi
+    remove_bucket "${ETCD_BACKUP_BUCKET}"
+  fi
+
+  if [[ $(terraform state list | grep "aws_broker.aws_s3_bucket.templates") != "" ]]; then
+    TEMPLATE_BUCKET="$(terraform output aws_broker_templates_bucket_id)"
+    remove_bucket "${TEMPLATE_BUCKET}"
   fi
 
   # Destroy as much as we can automatically recreate.
