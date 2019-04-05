@@ -16,9 +16,12 @@ mixer:
   policy:
     autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
   telemetry:
-    autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
+    enabled: false # disabled while we arent using it - needs a lot of cpu
+    # autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
 pilot:
   autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
+prometheus:
+  enabled: false # disabled since telemetry is disabled
 gateways:
   istio-ingressgateway:
     autoscaleMin: 2 # Must be greater than PodDisruptionBudget minAvailable
