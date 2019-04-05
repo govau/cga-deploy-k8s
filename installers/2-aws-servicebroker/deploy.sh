@@ -75,7 +75,7 @@ for DEPLOYMENT in $DEPLOYMENTS; do
     kubectl rollout status --namespace=aws-sb --timeout=2m \
         --watch deployment/${DEPLOYMENT}
 done
-
+echo "Wait for ClusterServiceBroker/aws-servicebroker "
 kubectl wait --for=condition=ready --timeout=60s "ClusterServiceBrokers/aws-servicebroker"
 
 echo "Installing aws-servicebroker templates"
