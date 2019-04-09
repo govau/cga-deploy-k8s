@@ -23,7 +23,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: gcr.io/heptio-images/contour:v0.9.0
+      - image: gcr.io/heptio-images/contour:v0.11.0
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -31,22 +31,19 @@ spec:
         name: contour
         command: ["contour"]
         args: ["serve", "--incluster"]
-      - image: docker.io/envoyproxy/envoy-alpine:v1.8.0
+      - image: docker.io/envoyproxy/envoy:v1.9.1
         name: envoy
         ports:
         - containerPort: 8080
-          hostPort: 8080
           name: http
         - containerPort: 8443
-          hostPort: 8443
           name: https
         command: ["envoy"]
         args:
-        - --config-path /config/contour.yaml
+        - --config-path /config/contour.json
         - --service-cluster cluster0
         - --service-node node0
         - --log-level info
-        - --v2-config-only
         readinessProbe:
           httpGet:
             path: /healthz
@@ -59,13 +56,13 @@ spec:
         lifecycle:
           preStop:
             exec:
-              command: ["wget", "-qO-", "http://localhost:9001/healthcheck/fail"] 
+              command: ["wget", "-qO-", "http://localhost:9001/healthcheck/fail"]
       initContainers:
-      - image: gcr.io/heptio-images/contour:v0.9.0
+      - image: gcr.io/heptio-images/contour:v0.11.0
         imagePullPolicy: Always
         name: envoy-initconfig
         command: ["contour"]
-        args: ["bootstrap", "/config/contour.yaml"]
+        args: ["bootstrap", "/config/contour.json"]
         volumeMounts:
         - name: contour-config
           mountPath: /config
