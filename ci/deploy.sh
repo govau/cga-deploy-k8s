@@ -55,6 +55,7 @@ for installer in ${SCRIPT_DIR}/../installers/*/deploy.sh; do
   if [ -f "${tester}" ]; then
     echo "Running tester ${tester}"
     HELM_HOST=":44134" \
+    ENV_NAME="${ENV_NAME}" \
     ${tester}
   else
     echo "No tester found: ${tester}"
