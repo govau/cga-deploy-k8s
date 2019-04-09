@@ -20,7 +20,7 @@ EOF
 )
 
 kubectl apply -n ${NAMESPACE} -f <(cat <<EOF
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
@@ -28,7 +28,7 @@ spec:
   selector:
     matchLabels:
       app: nginx
-  replicas: 2 # tells deployment to run 2 pods matching the template
+  replicas: 1
   template:
     metadata:
       labels:
