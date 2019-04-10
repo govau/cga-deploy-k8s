@@ -1,5 +1,11 @@
 groups: []
 resources:
+- name: aws-servicebroker
+  type: github-release
+  source:
+    access_token: ((github-public-repo-personal-access-token))
+    owner: awslabs
+    repository: aws-servicebroker
 - name: deploy-src
   type: git
   source:
@@ -113,6 +119,8 @@ jobs:
   - k
   plan:
   - do:
+    - get: aws-servicebroker
+      trigger: true
     - get: ops
       resource: ops-installer
       trigger: true
@@ -203,6 +211,9 @@ jobs:
   - l
   plan:
   - do:
+    - get: aws-servicebroker
+      passed:
+      - deploy-k
     - get: ops
       passed:
       - deploy-k

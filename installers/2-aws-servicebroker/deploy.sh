@@ -11,7 +11,9 @@ S3_BUCKET="$(${SSH} sdget awsbroker.cld.internal templatebucket)"
 TABLE_NAME="$(${SSH} sdget awsbroker.cld.internal tablename)"
 VPC_ID="$(${SSH} sdget net.cld.internal vpc-id)"
 
-echo "Deploying AWS servicebroker"
+AWS_SERVICEBROKER_VERSION="$(cat "${SCRIPT_DIR}/../../../aws-servicebroker/tag")"
+
+echo "Deploying AWS servicebroker ${AWS_SERVICEBROKER_VERSION}"
 
 # Add the service broker chart repository
 helm repo add aws-sb https://awsservicebroker.s3.amazonaws.com/charts
@@ -63,10 +65,11 @@ aws:
     vpcid: "${VPC_ID}"
 EOF
 
+
 helm upgrade --install --wait --recreate-pods \
     --namespace aws-sb \
     -f values.yml \
-    --version 1.0.0-beta.4 \
+    --version "${AWS_SERVICEBROKER_VERSION}" \
     aws-servicebroker aws-sb/aws-servicebroker
 
 echo "Waiting for aws-sb deployments to start"
