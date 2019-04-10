@@ -41,7 +41,8 @@ EOF
 unset AWS_ACCESS_KEY_ID
 unset AWS_SECRET_ACCESS_KEY
 
-for installer in ${SCRIPT_DIR}/../installers/*/deploy.sh; do
+INSTALLERS="$(find ${SCRIPT_DIR}/../installers  -name 'deploy.sh' | sort)"
+for installer in ${INSTALLERS}; do
   echo "Running installer ${installer}"
   ALERTMANAGER_SLACK_API_URL="${ALERTMANAGER_SLACK_API_URL}" \
   ENV_NAME="${ENV_NAME}" \
