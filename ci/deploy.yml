@@ -10,6 +10,7 @@ inputs:
 - name: charts
 - name: deploy-src
 - name: ops
+- name: service-catalog
 outputs: []
 params:
   ALERTMANAGER_SLACK_API_URL:

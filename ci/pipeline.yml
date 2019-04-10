@@ -38,6 +38,12 @@ resources:
     - aws-servicebroker/**
     private_key: ((ops-git-deploy-key.private_key))
     uri: git@github.com:AusDTO/ops.git
+- name: service-catalog
+  type: github-release
+  source:
+    access_token: ((github-public-repo-personal-access-token))
+    owner: kubernetes-incubator
+    repository: service-catalog
 - name: tfplan-l
   type: s3
   source:
@@ -127,6 +133,8 @@ jobs:
     - get: deploy-src
       trigger: true
     - get: charts
+    - get: service-catalog
+      trigger: true
     - task: deploy
       file: deploy-src/ci/deploy.yml
       params:
@@ -222,6 +230,9 @@ jobs:
       passed:
       - deploy-k
     - get: charts
+      passed:
+      - deploy-k
+    - get: service-catalog
       passed:
       - deploy-k
     - task: deploy-apply

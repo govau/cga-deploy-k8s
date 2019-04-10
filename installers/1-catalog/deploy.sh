@@ -12,6 +12,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ETCD_AWS_SECRET_NAME=catalog-etcd-operator-aws
 ETCD_BACKUP_BUCKET="$(${SSH} sdget catalog.k8s.cld.internal etcd-backup-bucket)"
 
+SERVICE_CATALOG_VERSION="$(cat "${SCRIPT_DIR}/../../../service-catalog/tag")"
+
 helm dependency update charts/stable/etcd-operator
 
 if ! kubectl get namespace catalog > /dev/null 2>&1 ; then
@@ -133,13 +135,13 @@ echo "Deploying Service Catalog (needed by AWS servicebroker)"
 helm repo add svc-cat https://svc-catalog-charts.storage.googleapis.com
 helm upgrade --install --wait \
     --namespace catalog \
+    --version "${SERVICE_CATALOG_VERSION}" \
     -f ${SCRIPT_DIR}/catalog-values.yml \
     catalog svc-cat/catalog
 
 echo "Waiting for all catalog deployments to start"
 DEPLOYMENTS="$(kubectl -n catalog get deployments -o json | jq -r .items[].metadata.name)"
 for DEPLOYMENT in $DEPLOYMENTS; do
-    # todo can exclude etcd-operator
     kubectl rollout status --namespace=catalog --timeout=2m \
         --watch deployment/${DEPLOYMENT}
 done
