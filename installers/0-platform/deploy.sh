@@ -52,6 +52,32 @@ aws eks update-kubeconfig \
 # kubectl should now be able to connect to our cluster
 kubectl get svc
 
+# Enable disk encryption in the default storageclass
+# We cant edit the storage class, so we'll recreate it if necessary
+if [[ "$(kubectl get storageclass gp2 -o json | jq -r .parameters.encrypted)" != "true" ]]; then
+  echo "Enabling storage class encryption"
+  kubectl delete storageclass gp2
+  kubectl apply -f <(cat <<EOF
+  kind: StorageClass
+  apiVersion: storage.k8s.io/v1
+  metadata:
+    name: gp2
+    annotations:
+      storageclass.kubernetes.io/is-default-class: "true"
+  provisioner: kubernetes.io/aws-ebs
+  parameters:
+    type: gp2
+    fsType: ext4
+    encrypted: "true"
+  reclaimPolicy: Delete
+  # TODO use volumeBindingMode: WaitForFirstConsumer?
+  volumeBindingMode: Immediate
+EOF
+  )
+else
+  echo "Storage class encryption was already enabled"
+fi
+
 # Enable worker nodes to join your cluster.
 # Also allow jumpbox.
 EKS_WORKER_INSTANCE_ROLE_ARN="$(${SSH} sdget eks.cld.internal worker-iam-role-arn)"
