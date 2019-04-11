@@ -18,7 +18,6 @@ echo "Deploying AWS servicebroker ${AWS_SERVICEBROKER_VERSION}"
 # Add the service broker chart repository
 helm repo add aws-sb https://awsservicebroker.s3.amazonaws.com/charts
 
-# Ensure secrets are set for the AWS servicebroker
 kubectl apply -f <(cat <<EOF
 kind: Namespace
 apiVersion: v1
@@ -29,6 +28,7 @@ metadata:
 EOF
 )
 
+# Ensure secrets are set for the AWS servicebroker
 if ! kubectl --namespace aws-sb get secret installer > /dev/null 2>&1 ; then
     echo "Creating access key"
     export AWS_PROFILE="${ENV_NAME}-cld"
