@@ -3,6 +3,9 @@
 set -eu
 set -o pipefail
 
+echo "Istio installer is disabled"
+exit 0
+
 ISTIO_VERSION="1.1.0"
 ISTIO_SHA256="9a578825488c85578460fdf7321ce14844f62b7083c7d9f919fe93bd76d938bc"
 
