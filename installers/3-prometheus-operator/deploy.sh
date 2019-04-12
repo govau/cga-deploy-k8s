@@ -7,12 +7,52 @@ set -o pipefail
 : "${ENV_NAME:?Need to set ENV_NAME}"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+NAMESPACE=prometheus-operator
 
 if [[ $ENV_NAME == "k" ]]; then
   # TODO is there a better way to accomplish this?
   echo "Disabling slack in k-cld"
   ALERTMANAGER_SLACK_API_URL="https://hooks.slack.com/services/foo"
 fi
+
+kubectl apply -f <(cat <<EOF
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: ${NAMESPACE}
+EOF
+)
+
+kubectl -n ${NAMESPACE} apply -f <(cat <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-prometheus-operator-prometheus-db-prometheus-prometheus-operator-prometheus-0
+  labels:
+    app: prometheus
+    prometheus: prometheus-operator-prometheus
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 40Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-prometheus-operator-alertmanager-db-alertmanager-prometheus-operator-alertmanager-0
+  labels:
+    alertmanager: prometheus-operator-alertmanager
+    app: alertmanager
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+EOF
+)
 
 cat << EOF > values.yml
 # Monitoring kube controller and scheduler doesnt seem to work on eks
@@ -28,10 +68,10 @@ alertmanager:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: gp2
-          resources:
-            requests:
-              storage: 5Gi
+          selector:
+            matchLabels:
+              alertmanager: prometheus-operator-alertmanager
+              app: alertmanager
   config:
     global:
       slack_api_url: "${ALERTMANAGER_SLACK_API_URL}"
@@ -78,10 +118,10 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: gp2
-          resources:
-            requests:
-              storage: 40Gi
+          selector:
+            matchLabels:
+              app: prometheus
+              prometheus: prometheus-operator-prometheus
 EOF
 
 helm dependency update charts/stable/prometheus-operator
