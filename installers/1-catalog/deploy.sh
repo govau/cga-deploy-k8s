@@ -102,6 +102,16 @@ spec:
   pod:
     affinity:
       podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: etcd_cluster
+                operator: In
+                values:
+                - etcd-cluster
+            topologyKey: failure-domain.beta.kubernetes.io/zone
         requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:
           matchExpressions:
