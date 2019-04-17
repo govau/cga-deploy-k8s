@@ -50,6 +50,19 @@ if ! kubectl --namespace aws-sb get secret installer > /dev/null 2>&1 ; then
     unset AWS_PROFILE
 fi
 
+echo "Installing aws-servicebroker templates"
+S3_BUCKET="$($SSH sdget awsbroker.cld.internal templatebucket)"
+VPC_ID="$(${SSH} sdget net.cld.internal vpc-id)"
+RDS_SUBNET_GROUP="$(${SSH} sdget rds.net.cld.internal subnetgroup)"
+ENV_SUBNET_NUMBER="$(${SSH} sdget env.cld.internal subnet-number)"
+
+VPC_ID="${VPC_ID}" \
+RDS_SUBNET_GROUP="${RDS_SUBNET_GROUP}" \
+ENV_SUBNET_NUMBER="${ENV_SUBNET_NUMBER}" \
+${SCRIPT_DIR}/../../../ops/aws-servicebroker/templates/generate_rdspostgresql.sh | \
+aws --profile "${ENV_NAME}-cld" s3 cp - s3://${S3_BUCKET}/templates/latest/rdspostgresql-main.yaml
+aws --profile "${ENV_NAME}-cld" cloudformation  validate-template --template-url https://s3.ap-southeast-2.amazonaws.com/${S3_BUCKET}/templates/latest/rdspostgresql-main.yaml
+
 BROKER_AWS_ACCESS_KEY_ID="$(kubectl -n aws-sb get secret installer -o yaml | yq -r .data.AWS_ACCESS_KEY_ID | base64 -d)"
 BROKER_AWS_SECRET_ACCESS_KEY="$(kubectl -n aws-sb get secret installer -o yaml | yq -r .data.AWS_SECRET_ACCESS_KEY | base64 -d)"
 
@@ -65,7 +78,6 @@ aws:
     vpcid: "${VPC_ID}"
 EOF
 
-
 helm upgrade --install --wait --recreate-pods \
     --namespace aws-sb \
     -f values.yml \
@@ -80,17 +92,5 @@ for DEPLOYMENT in $DEPLOYMENTS; do
 done
 echo "Wait for ClusterServiceBroker/aws-servicebroker "
 kubectl wait --for=condition=ready --timeout=60s "ClusterServiceBrokers/aws-servicebroker"
-
-echo "Installing aws-servicebroker templates"
-S3_BUCKET="$($SSH sdget awsbroker.cld.internal templatebucket)"
-VPC_ID="$(${SSH} sdget net.cld.internal vpc-id)"
-RDS_SUBNET_GROUP="$(${SSH} sdget rds.net.cld.internal subnetgroup)"
-ENV_SUBNET_NUMBER="$(${SSH} sdget env.cld.internal subnet-number)"
-
-VPC_ID="${VPC_ID}" \
-RDS_SUBNET_GROUP="${RDS_SUBNET_GROUP}" \
-ENV_SUBNET_NUMBER="${ENV_SUBNET_NUMBER}" \
-${SCRIPT_DIR}/../../../ops/aws-servicebroker/templates/generate_rdspostgresql.sh | \
-aws s3 --profile "${ENV_NAME}-cld" cp - s3://${S3_BUCKET}/templates/latest/rdspostgresql-main.yaml
 
 svcat sync broker --scope cluster aws-servicebroker
