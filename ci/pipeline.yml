@@ -2,22 +2,26 @@ groups: []
 resources:
 - name: aws-servicebroker
   type: github-release
+  icon: github-circle
   source:
     access_token: ((github-public-repo-personal-access-token))
     owner: awslabs
     repository: aws-servicebroker
 - name: deploy-src
   type: git
+  icon: git
   source:
     branch: master
     uri: https://github.com/govau/cga-deploy-k8s
 - name: charts
   type: git
+  icon: git
   source:
     branch: master
     uri: https://github.com/helm/charts
 - name: ops-terraform
   type: git
+  icon: git
   source:
     branch: master
     paths:
@@ -31,6 +35,7 @@ resources:
     uri: git@github.com:AusDTO/ops.git
 - name: ops-installer
   type: git
+  icon: git
   source:
     branch: master
     paths:
@@ -39,6 +44,7 @@ resources:
     private_key: ((ops-git-deploy-key.private_key))
     uri: git@github.com:AusDTO/ops.git
 - name: service-catalog
+  icon: github-circle
   type: github-release
   source:
     access_token: ((github-public-repo-personal-access-token))
