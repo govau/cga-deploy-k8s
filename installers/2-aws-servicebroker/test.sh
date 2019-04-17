@@ -9,19 +9,56 @@ echo "Test aws-servicebroker"
 
 svcat describe broker aws-servicebroker
 
-# TODO fix this test
-# echo "Wait for at least one service broker class"
-# end=$((SECONDS+300))
-# while :
-# do
-#   if (( $(svcat get classes --scope cluster -o json | jq -r '. | length') >= 1 )); then
-#     echo "success"
-#     break;
-#   fi
-#   if (( ${SECONDS} >= end )); then
-#     echo "Timeout: Wait for at least one service broker class"
-#     exit 1
-#   fi
-#   echo -n "."
-#   sleep 5
-# done
+echo "Wait for at least one service broker class"
+end=$((SECONDS+300))
+while :
+do
+  if (( $(svcat get classes --scope cluster -o json | jq -r '. | length') >= 1 )); then
+    echo "success"
+    break;
+  fi
+  if (( ${SECONDS} >= end )); then
+    echo "Timeout: Wait for at least one service broker class"
+    exit 1
+  fi
+  echo -n "."
+  sleep 5
+done
+
+NAMESPACE=aws-sb-ci-test
+
+# silently cleanup in case there was an error the last time the test ran
+kubectl -n ${NAMESPACE} delete servicebinding aws-sb-ci-test-db-binding >/dev/null 2>&1 || true
+kubectl -n ${NAMESPACE} delete --timeout=30m serviceinstance aws-sb-ci-test-db >/dev/null 2>&1 || true
+kubectl delete ns ${NAMESPACE} >/dev/null 2>&1 || true
+
+kubectl create ns ${NAMESPACE}
+kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
+apiVersion: servicecatalog.k8s.io/v1beta1
+kind: ServiceInstance
+metadata:
+  name: aws-sb-ci-test-db
+spec:
+  clusterServiceClassExternalName: rdspostgresql
+  clusterServicePlanExternalName: dev
+EOF
+)
+
+echo "Wait for test rds serviceinstance to be ready"
+kubectl -n "${NAMESPACE}" wait --for=condition=Ready --timeout=30m "ServiceInstance/aws-sb-ci-test-db"
+
+kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
+apiVersion: servicecatalog.k8s.io/v1beta1
+kind: ServiceBinding
+metadata:
+  name: aws-sb-ci-test-db-binding
+spec:
+  instanceRef:
+    name: aws-sb-ci-test-db
+EOF
+)
+
+# cleanup
+kubectl -n ${NAMESPACE} delete servicebinding aws-sb-ci-test-db-binding
+kubectl -n ${NAMESPACE} delete --timeout=30m serviceinstance aws-sb-ci-test-db
+kubectl delete ns ${NAMESPACE}
