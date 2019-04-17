@@ -59,12 +59,12 @@ resources:
     secret_access_key: ((aws_secret_access_key))
     server_side_encryption: AES256
     versioned_file: l-cld/terraform.tfplan
-- name: after-midnight
+- name: 7pm
   type: time
   source:
+    start: 7:00 PM
+    stop: 8:00 PM
     location: Australia/Sydney
-    start: 12:00 AM
-    stop: 1:00 AM
 - name: eks-node-ami
   type: ami
   check_every: 1h
@@ -160,7 +160,7 @@ jobs:
     - get: ops
       resource: ops-terraform
     - get: deploy-src
-    - get: after-midnight
+    - get: 7pm
       trigger: true
     - task: delete
       file: deploy-src/ci/delete.yml
