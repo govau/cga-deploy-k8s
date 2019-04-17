@@ -25,40 +25,45 @@ do
   sleep 5
 done
 
+echo "Test aws-servicebroker rds class (will take a while)"
 NAMESPACE=aws-sb-ci-test
 
-# silently cleanup in case there was an error the last time the test ran
-kubectl -n ${NAMESPACE} delete servicebinding aws-sb-ci-test-db-binding >/dev/null 2>&1 || true
-kubectl -n ${NAMESPACE} delete --timeout=30m serviceinstance aws-sb-ci-test-db >/dev/null 2>&1 || true
-kubectl delete ns ${NAMESPACE} >/dev/null 2>&1 || true
+if ! kubectl get ns ${NAMESPACE} > /dev/null 2>&1 ; then
+    echo "Creating the namespace for aws-servicebroker tests"
+    kubectl create namespace ${NAMESPACE}
+fi
 
+echo "Cleanup in case there was an error the last time the test ran"
+kubectl -n ${NAMESPACE} delete servicebinding --all=true || true
+kubectl -n ${NAMESPACE} delete serviceinstance --all=true --wait=false  || true
+
+INSTANCE_NAME="aws-sb-ci-test-${RANDOM}-db"
 kubectl create ns ${NAMESPACE}
 kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
 apiVersion: servicecatalog.k8s.io/v1beta1
 kind: ServiceInstance
 metadata:
-  name: aws-sb-ci-test-db
+  name: "${INSTANCE_NAME}"
 spec:
   clusterServiceClassExternalName: rdspostgresql
   clusterServicePlanExternalName: dev
 EOF
 )
 
-echo "Wait for test rds serviceinstance to be ready"
-kubectl -n "${NAMESPACE}" wait --for=condition=Ready --timeout=30m "ServiceInstance/aws-sb-ci-test-db"
+echo "Wait for rds serviceinstance to be ready"
+kubectl -n "${NAMESPACE}" wait --for=condition=Ready --timeout=30m "ServiceInstance/${INSTANCE_NAME}"
 
 kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
 apiVersion: servicecatalog.k8s.io/v1beta1
 kind: ServiceBinding
 metadata:
-  name: aws-sb-ci-test-db-binding
+  name: ${INSTANCE_NAME}-binding
 spec:
   instanceRef:
-    name: aws-sb-ci-test-db
+    name: ${INSTANCE_NAME}
 EOF
 )
 
 # cleanup
-kubectl -n ${NAMESPACE} delete servicebinding aws-sb-ci-test-db-binding
-kubectl -n ${NAMESPACE} delete --timeout=30m serviceinstance aws-sb-ci-test-db
-kubectl delete ns ${NAMESPACE}
+kubectl -n ${NAMESPACE} delete servicebinding "${INSTANCE_NAME}-binding"
+kubectl -n ${NAMESPACE} delete --wait=false serviceinstance "${INSTANCE_NAME}"
