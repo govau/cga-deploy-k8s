@@ -38,7 +38,7 @@ kubectl -n ${NAMESPACE} delete servicebinding --all=true || true
 kubectl -n ${NAMESPACE} delete serviceinstance --all=true --wait=false  || true
 
 INSTANCE_NAME="aws-sb-ci-test-${RANDOM}-db"
-kubectl create ns ${NAMESPACE}
+
 kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
 apiVersion: servicecatalog.k8s.io/v1beta1
 kind: ServiceInstance
