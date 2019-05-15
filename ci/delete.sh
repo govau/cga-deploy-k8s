@@ -42,6 +42,8 @@ EOF
 
   # there is a bug in the provider when doing a terraform destroy with a dependant security group.
   # As a workaround, just delete the asg here outside of terraform first.
+  # TODO might be able to remove this if we change to an aws_launch_template.network_interfaces.delete_on_termination
+  # https://github.com/terraform-aws-modules/terraform-aws-eks/pull/311/files
   if [[ "$(aws --profile "${ENV_NAME}-cld" autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes 2>/dev/null | jq -r '.AutoScalingGroups | length')" == "1" ]]; then
     aws --profile "${ENV_NAME}-cld" autoscaling delete-auto-scaling-group --auto-scaling-group-name eks-worker-nodes --force-delete
 
