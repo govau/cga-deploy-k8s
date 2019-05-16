@@ -81,6 +81,10 @@ resources:
       is-public: true
       state: available
       name: amazon-eks-node-1.11* # Must match the eks kubernetes version
+- name: slack
+  type: slack-notification
+  source:
+    url: ((slack-webhook-url))
 resource_types:
 - name: slack-notification
   type: docker-image
@@ -95,37 +99,44 @@ jobs:
   serial_groups:
   - k
   plan:
-  - do:
-    - get: ops
-      trigger: true
-      resource: ops-terraform
-    - get: deploy-src
-      trigger: true
-    - get: eks-node-ami
-      trigger: true
-    - task: create-fake-tfplan
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: govau/cga-cli
-        run:
-          path: /bin/bash
-          args:
-          - -c
-          - # noop
-            # we dont do terraform plan + apply in k-cld, but a tfplan
-            # input is still needed by the terraform-apply task
-        outputs:
-        - name: tfplan
-    - task: terraform-apply
-      file: deploy-src/ci/terraform-apply.yml
-      params:
-        AWS_ACCESS_KEY_ID: ((aws_access_key_id))
-        AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
-        ENV_NAME: k
-        SKIP_TERRAFORM_PLAN: 1
+    - do:
+      - get: ops
+        trigger: true
+        resource: ops-terraform
+      - get: deploy-src
+        trigger: true
+      - get: eks-node-ami
+        trigger: true
+      - task: create-fake-tfplan
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: govau/cga-cli
+          run:
+            path: /bin/bash
+            args:
+            - -c
+            - # noop
+              # we dont do terraform plan + apply in k-cld, but a tfplan
+              # input is still needed by the terraform-apply task
+          outputs:
+          - name: tfplan
+      - task: terraform-apply
+        file: deploy-src/ci/terraform-apply.yml
+        params:
+          AWS_ACCESS_KEY_ID: ((aws_access_key_id))
+          AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
+          ENV_NAME: k
+          SKIP_TERRAFORM_PLAN: 1
+      on_failure:
+        put: slack
+        params:
+          text: |
+            :x: :terraform: $BUILD_PIPELINE_NAME $BUILD_JOB_NAME FAILED
+            <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+
 - name: deploy-k
   serial_groups:
   - k
@@ -168,6 +179,12 @@ jobs:
         AWS_ACCESS_KEY_ID: ((aws_access_key_id))
         AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
         ENV_NAME: k
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: :trashfire: $BUILD_PIPELINE_NAME $BUILD_JOB_NAME FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 - name: terraform-plan-l
   serial_groups:
   - l
@@ -195,6 +212,12 @@ jobs:
     - put: tfplan-l
       params:
         file: tfplan/terraform.tfplan
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: :terraform: $BUILD_PIPELINE_NAME $BUILD_JOB_NAME FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 - name: terraform-apply-l
   serial_groups:
   - l
@@ -220,6 +243,12 @@ jobs:
         AWS_ACCESS_KEY_ID: ((aws_access_key_id))
         AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
         ENV_NAME: l
+    on_failure:
+      put: slack
+      params:
+        text: |
+          :x: :terraform: $BUILD_PIPELINE_NAME $BUILD_JOB_NAME FAILED
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 - name: deploy-l
   serial_groups:
   - l
