@@ -68,10 +68,9 @@ EOF
 )
 
 echo "Wait for contour-test app to be deployed"
-end=$((SECONDS+60))
+end=$((SECONDS+120))
 while :
 do
-  # if ! curl -i http://${TEST_DOMAIN} >/dev/null 2>&1; then
   if $(curl --output /dev/null --silent --head --fail http://${TEST_DOMAIN}); then
     echo "success"
     break;
