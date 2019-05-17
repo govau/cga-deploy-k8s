@@ -24,8 +24,14 @@ fi
 echo "Creating aws-secrets for etcd-operator backups if necessary"
 if [[ ! $(kubectl -n catalog get secret "${ETCD_AWS_SECRET_NAME}" 2>/dev/null) ]]; then
   IAM_USER="catalog-etcd-operator" # todo could read this from the env instead of hardcoded?
+  export AWS_PROFILE="${ENV_NAME}-cld"
+  key_count=$(aws iam list-access-keys --user-name "${IAM_USER}" | jq '.AccessKeyMetadata | length')
+  if [[ $key_count > 1 ]]; then
+      oldest_key_id=$(aws iam list-access-keys --user-name "${IAM_USER}" | jq -r '.AccessKeyMetadata |= sort_by(.CreateDate) | .AccessKeyMetadata | first | .AccessKeyId')
+      aws iam delete-access-key --user-name "${IAM_USER}" --access-key-id "${oldest_key_id}"
+  fi
 
-  output="$(aws --profile "${ENV_NAME}-cld" iam create-access-key --user-name "${IAM_USER}")"
+  output="$(aws iam create-access-key --user-name "${IAM_USER}")"
   aws_access_key_id="$(echo $output | jq -r .AccessKey.AccessKeyId)"
   aws_secret_access_key="$(echo $output | jq -r .AccessKey.SecretAccessKey)"
 
@@ -40,6 +46,7 @@ EOF
         --from-file credentials --dry-run -o yaml | kubectl apply -f -
 
   rm credentials
+  unset AWS_PROFILE
 fi
 
 cat << EOF > etcd-values.yml
