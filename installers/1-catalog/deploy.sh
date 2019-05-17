@@ -5,12 +5,12 @@ set -o pipefail
 
 : "${ENV_NAME:?Need to set ENV_NAME}"
 : "${HELM_HOST:?Need to set HELM_HOST}"
-: "${SSH:?Need to set SSH}"
+: "${JUMPBOX:?Need to set JUMPBOX}"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 ETCD_AWS_SECRET_NAME=catalog-etcd-operator-aws
-ETCD_BACKUP_BUCKET="$(${SSH} sdget catalog.k8s.cld.internal etcd-backup-bucket)"
+ETCD_BACKUP_BUCKET="$(ssh ${JUMPBOX} sdget catalog.k8s.cld.internal etcd-backup-bucket)"
 
 SERVICE_CATALOG_VERSION="$(cat "${SCRIPT_DIR}/../../../service-catalog/tag")"
 

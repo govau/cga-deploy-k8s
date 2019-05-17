@@ -3,13 +3,15 @@
 set -eu
 set -o pipefail
 
+: "${JUMPBOX:?Need to set JUMPBOX}"
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-AWS_ACCOUNT_ID="$(${SSH} sdget env.cld.internal aws-account-id)"
-IAM_USER="$(${SSH} sdget awsbroker.cld.internal iamusername)"
-S3_BUCKET="$(${SSH} sdget awsbroker.cld.internal templatebucket)"
-TABLE_NAME="$(${SSH} sdget awsbroker.cld.internal tablename)"
-VPC_ID="$(${SSH} sdget net.cld.internal vpc-id)"
+AWS_ACCOUNT_ID="$(ssh ${JUMPBOX} sdget env.cld.internal aws-account-id)"
+IAM_USER="$(ssh ${JUMPBOX} sdget awsbroker.cld.internal iamusername)"
+S3_BUCKET="$(ssh ${JUMPBOX} sdget awsbroker.cld.internal templatebucket)"
+TABLE_NAME="$(ssh ${JUMPBOX} sdget awsbroker.cld.internal tablename)"
+VPC_ID="$(ssh ${JUMPBOX} sdget net.cld.internal vpc-id)"
 
 AWS_SERVICEBROKER_VERSION="$(cat "${SCRIPT_DIR}/../../../aws-servicebroker/tag")"
 
@@ -51,10 +53,10 @@ if ! kubectl --namespace aws-sb get secret installer > /dev/null 2>&1 ; then
 fi
 
 echo "Installing aws-servicebroker templates"
-S3_BUCKET="$($SSH sdget awsbroker.cld.internal templatebucket)"
-VPC_ID="$(${SSH} sdget net.cld.internal vpc-id)"
-RDS_SUBNET_GROUP="$(${SSH} sdget rds.net.cld.internal subnetgroup)"
-ENV_SUBNET_NUMBER="$(${SSH} sdget env.cld.internal subnet-number)"
+S3_BUCKET="$(ssh ${JUMPBOX} sdget awsbroker.cld.internal templatebucket)"
+VPC_ID="$(ssh ${JUMPBOX} sdget net.cld.internal vpc-id)"
+RDS_SUBNET_GROUP="$(ssh ${JUMPBOX} sdget rds.net.cld.internal subnetgroup)"
+ENV_SUBNET_NUMBER="$(ssh ${JUMPBOX} sdget env.cld.internal subnet-number)"
 
 VPC_ID="${VPC_ID}" \
 RDS_SUBNET_GROUP="${RDS_SUBNET_GROUP}" \

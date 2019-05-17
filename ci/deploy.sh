@@ -16,20 +16,25 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 export PATH_TO_OPS=${SCRIPT_DIR}/../../ops
 export JUMPBOX=bosh-jumpbox.${ENV_NAME}.cld.gov.au
-export PATH_TO_KEY=${PWD}/secret-jumpbox.pem
 
+# Configure ssh
+mkdir -p $HOME/.ssh
 # Add DTA CA as cert authority for jumpboxes
 SSHCA_CA_PUB="$(cat ${PATH_TO_OPS}/terraform/sshca-ca.pub)"
-mkdir -p $HOME/.ssh
 cat <<EOF >> $HOME/.ssh/known_hosts
 @cert-authority *.cld.gov.au ${SSHCA_CA_PUB}
 EOF
-
-# Create the private key for the jumpbox
-echo "${JUMPBOX_SSH_KEY}">${PATH_TO_KEY}
-chmod 600 ${PATH_TO_KEY}
-
-export SSH="ssh -oBatchMode=yes -i ${PATH_TO_KEY} -p ${JUMPBOX_SSH_PORT} ec2-user@${JUMPBOX}"
+# Write out the key
+echo "${JUMPBOX_SSH_KEY}">${HOME}/.ssh/id_rsa
+chmod 600 ${HOME}/.ssh/id_rsa
+# Write out the ssh config
+cat <<EOF >> $HOME/.ssh/config
+Host ${JUMPBOX}
+  User ec2-user
+  BatchMode yes
+  Port ${JUMPBOX_SSH_PORT}
+  StrictHostKeyChecking yes
+EOF
 
 # Put our AWS creds into a credentials file
 mkdir -p $HOME/.aws
@@ -48,7 +53,6 @@ for installer in ${INSTALLERS}; do
   ENV_NAME="${ENV_NAME}" \
   HELM_HOST=":44134" \
   LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL}" \
-  SSH="${SSH}" \
   SSO_GOOGLE_CLIENT_SECRET="${SSO_GOOGLE_CLIENT_SECRET}" \
   ${installer}
 
