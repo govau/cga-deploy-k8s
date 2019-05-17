@@ -18,19 +18,18 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8002"
-        prometheus.io/path: "/stats"
-        prometheus.io/format: "prometheus"
+        prometheus.io/path: "/stats/prometheus"
     spec:
       hostNetwork: true
       containers:
-      - image: gcr.io/heptio-images/contour:v0.11.0
+      - image: gcr.io/heptio-images/contour:v0.12.0
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
           name: contour
         name: contour
         command: ["contour"]
-        args: ["serve", "--incluster"]
+        args: ["serve", "--incluster", "--envoy-service-http-port", "8080", "--envoy-service-https-port", "8443"]
       - image: docker.io/envoyproxy/envoy:v1.9.1
         name: envoy
         ports:
@@ -56,9 +55,9 @@ spec:
         lifecycle:
           preStop:
             exec:
-              command: ["wget", "-qO-", "http://localhost:9001/healthcheck/fail"]
+              command: ["wget", "-qO-", "--post-data=''", "http://localhost:9001/healthcheck/fail"]
       initContainers:
-      - image: gcr.io/heptio-images/contour:v0.11.0
+      - image: gcr.io/heptio-images/contour:v0.12.0
         imagePullPolicy: Always
         name: envoy-initconfig
         command: ["contour"]
@@ -66,6 +65,11 @@ spec:
         volumeMounts:
         - name: contour-config
           mountPath: /config
+        env:
+        - name: CONTOUR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       volumes:
       - name: contour-config
         emptyDir: {}
