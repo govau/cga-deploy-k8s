@@ -22,6 +22,11 @@ metadata:
     name: sso
 EOF
 )
+CERTMANAGER_CLUSTER_ISSUER="letsencrypt-staging"
+if [[ $ENV_NAME == "l" ]]; then
+  echo "Using prod letsencrypt issuer "
+  CERTMANAGER_CLUSTER_ISSUER="letsencrypt-prod"
+fi
 
 function ensure-secret-created() {
     KEY=$1
@@ -161,7 +166,7 @@ metadata:
   namespace: sso
   annotations:
     kubernetes.io/tls-acme: "true"
-    certmanager.k8s.io/cluster-issuer: "letsencrypt-prod"
+    certmanager.k8s.io/cluster-issuer: "${CERTMANAGER_CLUSTER_ISSUER}"
     ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   tls:
@@ -279,7 +284,7 @@ metadata:
   namespace: sso
   annotations:
     kubernetes.io/tls-acme: "true"
-    certmanager.k8s.io/cluster-issuer: "letsencrypt-prod"
+    certmanager.k8s.io/cluster-issuer: "${CERTMANAGER_CLUSTER_ISSUER}"
     ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   # sso-proxy could work with a host wildcard i.e. *.sso.x.cld.gov.au, however Contour
