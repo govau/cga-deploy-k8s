@@ -64,6 +64,21 @@ spec:
 EOF
 )
 
+BINDING_JSON="$(kubectl -n ${NAMESPACE} get secret ${INSTANCE_NAME}-binding -o json)"
+POSTGRES_DB_NAME="$(echo ${BINDING_JSON} | jq -r '.data.DB_NAME' | base64 -d)"
+POSTGRES_ENDPOINT_ADDRESS="$(echo ${BINDING_JSON} | jq -r '.data.ENDPOINT_ADDRESS' | base64 -d)"
+POSTGRES_MASTER_PASSWORD="$(echo ${BINDING_JSON} | jq -r '.data.MASTER_PASSWORD' | base64 -d)"
+POSTGRES_MASTER_USERNAME="$(echo ${BINDING_JSON} | jq -r '.data.MASTER_USERNAME' | base64 -d)"
+POSTGRES_PORT="$(echo ${BINDING_JSON} | jq -r '.data.PORT' | base64 -d)"
+
+kubectl run --namespace ${NAMESPACE} psql --rm --tty -i --restart='Never' \
+  --env PGHOST=$POSTGRES_ENDPOINT_ADDRESS \
+  --env PGDATABASE=$POSTGRES_DB_NAME \
+  --env PGUSER=$POSTGRES_MASTER_USERNAME \
+  --env PGPASSWORD=$POSTGRES_MASTER_PASSWORD \
+  --env PGPORT=$POSTGRES_PORT \
+  --image postgres -- pg_isready
+
 # cleanup
 kubectl -n ${NAMESPACE} delete servicebinding "${INSTANCE_NAME}-binding"
 kubectl -n ${NAMESPACE} delete --wait=false serviceinstance "${INSTANCE_NAME}"
