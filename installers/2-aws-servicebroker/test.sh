@@ -82,3 +82,39 @@ kubectl run --namespace ${NAMESPACE} psql --rm --tty -i --restart='Never' \
 # cleanup
 kubectl -n ${NAMESPACE} delete servicebinding "${INSTANCE_NAME}-binding"
 kubectl -n ${NAMESPACE} delete --wait=false serviceinstance "${INSTANCE_NAME}"
+
+############
+echo "Test aws-servicebroker redis class (will take a while)"
+INSTANCE_NAME="aws-sb-ci-test-${RANDOM}-redis"
+
+kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
+apiVersion: servicecatalog.k8s.io/v1beta1
+kind: ServiceInstance
+metadata:
+  name: "${INSTANCE_NAME}"
+spec:
+  clusterServiceClassExternalName: redis
+  clusterServicePlanExternalName: standard
+EOF
+)
+
+echo "Wait for redis serviceinstance to be ready"
+kubectl -n "${NAMESPACE}" wait --for=condition=Ready --timeout=30m "ServiceInstance/${INSTANCE_NAME}"
+
+kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
+apiVersion: servicecatalog.k8s.io/v1beta1
+kind: ServiceBinding
+metadata:
+  name: ${INSTANCE_NAME}-binding
+spec:
+  instanceRef:
+    name: ${INSTANCE_NAME}
+EOF
+)
+
+BINDING_JSON="$(kubectl -n ${NAMESPACE} get secret ${INSTANCE_NAME}-binding -o json)"
+
+# cleanup
+kubectl -n ${NAMESPACE} delete servicebinding "${INSTANCE_NAME}-binding"
+kubectl -n ${NAMESPACE} delete --wait=false serviceinstance "${INSTANCE_NAME}"
+

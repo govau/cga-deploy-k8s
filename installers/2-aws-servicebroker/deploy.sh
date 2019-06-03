@@ -57,6 +57,8 @@ S3_BUCKET="$(ssh ${JUMPBOX} sdget awsbroker.cld.internal templatebucket)"
 VPC_ID="$(ssh ${JUMPBOX} sdget net.cld.internal vpc-id)"
 RDS_SUBNET_GROUP="$(ssh ${JUMPBOX} sdget rds.net.cld.internal subnetgroup)"
 ENV_SUBNET_NUMBER="$(ssh ${JUMPBOX} sdget env.cld.internal subnet-number)"
+ELASTICACHE_SUBNET_GROUP="$(ssh ${JUMPBOX} sdget elasticache.net.cld.internal subnetgroup)"
+ELASTICACHE_SECURITY_GROUP="$(ssh ${JUMPBOX} sdget elasticache.net.cld.internal securitygroupid)"
 
 VPC_ID="${VPC_ID}" \
 RDS_SUBNET_GROUP="${RDS_SUBNET_GROUP}" \
@@ -64,6 +66,12 @@ ENV_SUBNET_NUMBER="${ENV_SUBNET_NUMBER}" \
 ${SCRIPT_DIR}/../../../ops/aws-servicebroker/templates/generate_rdspostgresql.sh | \
 aws --profile "${ENV_NAME}-cld" s3 cp - s3://${S3_BUCKET}/templates/latest/rdspostgresql-main.yaml
 aws --profile "${ENV_NAME}-cld" cloudformation  validate-template --template-url https://s3.ap-southeast-2.amazonaws.com/${S3_BUCKET}/templates/latest/rdspostgresql-main.yaml
+
+SECURITY_GROUP="${ELASTICACHE_SECURITY_GROUP}" \
+SUBNET_GROUP="${ELASTICACHE_SUBNET_GROUP}" \
+${SCRIPT_DIR}/../../../ops/aws-servicebroker/templates/generate_redis.sh | \
+aws --profile "${ENV_NAME}-cld" s3 cp - s3://${S3_BUCKET}/templates/latest/redis-main.yaml
+aws --profile "${ENV_NAME}-cld" cloudformation  validate-template --template-url https://s3.ap-southeast-2.amazonaws.com/${S3_BUCKET}/templates/latest/redis-main.yaml
 
 BROKER_AWS_ACCESS_KEY_ID="$(kubectl -n aws-sb get secret installer -o yaml | yq -r .data.AWS_ACCESS_KEY_ID | base64 -d)"
 BROKER_AWS_SECRET_ACCESS_KEY="$(kubectl -n aws-sb get secret installer -o yaml | yq -r .data.AWS_SECRET_ACCESS_KEY | base64 -d)"
