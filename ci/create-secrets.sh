@@ -48,7 +48,7 @@ trim_to_one_access_key $CI_IAM_USERNAME
 
 for ENV_NAME in k l; do
   echo ENV_NAME=$ENV_NAME
-  CREDS_FILE="$SCRIPT_DIR/client_secret_${ENV_NAME}.json"
+  CREDS_FILE="$SCRIPT_DIR/../client_secret_${ENV_NAME}.json"
   echo CREDS_FILE=$CREDS_FILE
   # if ! https_proxy=socks5://localhost:8112 credhub get -n "/concourse/apps/${PIPELINE}/sso_google_client_secret_k" > /dev/null 2>&1 ; then
   if [ ! -e $CREDS_FILE ]; then
