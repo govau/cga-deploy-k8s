@@ -37,13 +37,21 @@ EOF
 
   if aws --profile "${ENV_NAME}-cld" eks update-kubeconfig \
     --name eks \
-    --role-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/Terraform &>/dev/null ; then
+    --role-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/Terraform &>/dev/null; then
 
     echo "Kubernetes cluster is running"
     kubectl get pods --all-namespaces
 
-    # todo delete all servicebindings
-    # todo delete all serviceinstances
+    if [[ $(kubectl api-resources --api-group=servicecatalog.k8s.io -o name) != "" ]]; then
+      echo "Deleting service instances (this can take a while)"
+      NAMESPACES="$(kubectl get namespaces -o json | jq -r .items[].metadata.name)"
+      for NAMESPACE in ${NAMESPACES}; do
+        kubectl delete servicebindings --namespace ${NAMESPACE} --all=true
+        kubectl delete serviceinstances --namespace ${NAMESPACE} --all=true
+      done
+    else
+      echo "service catalog is not running"
+    fi
   else
     echo "Kubernetes cluster is not running"
   fi
