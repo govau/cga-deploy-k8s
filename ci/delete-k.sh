@@ -5,8 +5,8 @@ set -o pipefail
 
 : "${AWS_ACCESS_KEY_ID:?Need to set AWS_ACCESS_KEY_ID}"
 : "${AWS_SECRET_ACCESS_KEY:?Need to set AWS_SECRET_ACCESS_KEY}"
-: "${ENV_NAME:?Need to set ENV_NAME}"
 
+ENV_NAME=k
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 PATH_TO_OPS=${SCRIPT_DIR}/../../ops
 
@@ -32,13 +32,21 @@ EOF
   unset AWS_ACCESS_KEY_ID
   unset AWS_SECRET_ACCESS_KEY
 
-  pwd
   echo "Will delete ${ENV_NAME}-cld in 60 seconds..."
   sleep 60
 
-  # todo delete all servicebindings
-  # todo delete all serviceinstances
-  # todo delete all persistentvolumes - maybe after terraform?
+  if aws --profile "${ENV_NAME}-cld" eks update-kubeconfig \
+    --name eks \
+    --role-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/Terraform &>/dev/null ; then
+
+    echo "Kubernetes cluster is running"
+    kubectl get pods --all-namespaces
+
+    # todo delete all servicebindings
+    # todo delete all serviceinstances
+  else
+    echo "Kubernetes cluster is not running"
+  fi
 
   # there is a bug in the provider when doing a terraform destroy with a dependant security group.
   # As a workaround, just delete the asg here outside of terraform first.
@@ -117,4 +125,7 @@ EOF
   echo terraform_cmd: $terraform_cmd
 
   $terraform_cmd
+
+  # todo delete all remaining persistentvolumes
+
 popd

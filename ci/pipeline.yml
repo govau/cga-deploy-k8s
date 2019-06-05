@@ -173,12 +173,11 @@ jobs:
     - get: deploy-src
     - get: 7pm
       trigger: true
-    - task: delete
-      file: deploy-src/ci/delete.yml
+    - task: delete-k
+      file: deploy-src/ci/delete-k.yml
       params:
         AWS_ACCESS_KEY_ID: ((aws_access_key_id))
         AWS_SECRET_ACCESS_KEY: ((aws_secret_access_key))
-        ENV_NAME: k
     on_failure:
       put: slack
       params:
