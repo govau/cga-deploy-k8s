@@ -150,8 +150,9 @@ jobs:
   plan:
   - do:
     - get: amazon-vpc-cni-k8s
-      include_source_tarball: true
       trigger: true
+      params:
+        include_source_tarball: true
     - get: aws-servicebroker
       trigger: true
     - get: ops
@@ -264,7 +265,8 @@ jobs:
   plan:
   - do:
     - get: amazon-vpc-cni-k8s
-      include_source_tarball: true
+      params:
+        include_source_tarball: true
     - get: aws-servicebroker
       passed:
       - deploy-k

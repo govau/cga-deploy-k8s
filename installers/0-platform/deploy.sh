@@ -122,13 +122,13 @@ helm init --client-only
 helm repo update
 
 echo "Apply the desired version of amazon-vpc-cni-k8s if necessary"
-DESIRED_AMAZON_VPC_CNI_K8S_VERSION="$(cat ${SCRIPT_DIR}/../../amazon-vpc-cni-k8s/tag)"
+DESIRED_AMAZON_VPC_CNI_K8S_VERSION="$(cat ${SCRIPT_DIR}/../../../amazon-vpc-cni-k8s/tag)"
 CURRENT_AMAZON_VPC_CNI_K8S_VERSION="$(kubectl describe daemonset aws-node --namespace kube-system | grep Image | cut -d "/" -f 2 | cut -d ":" -f 2)"
 if [[ ${CURRENT_AMAZON_VPC_CNI_K8S_VERSION} != ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION} ]]; then
   echo "Updating amazon-vpc-cni-k8s from ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION} to ${CURRENT_AMAZON_VPC_CNI_K8S_VERSION}"
   # The release source includes the config.yaml to apply to the cluster
   # see https://github.com/aws/amazon-vpc-cni-k8s
-  pushd "${SCRIPT_DIR}/../../amazon-vpc-cni-k8s"
+  pushd "${SCRIPT_DIR}/../../../amazon-vpc-cni-k8s"
     mkdir -p output
     tar xvfz source.tar.gz --directory output --strip 1
 
