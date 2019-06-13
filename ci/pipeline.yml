@@ -80,7 +80,7 @@ resources:
       owner-id: "602401143452"
       is-public: true
       state: available
-      name: amazon-eks-node-1.11* # Must match the eks kubernetes version
+      name: amazon-eks-node-1.12* # Must match the eks kubernetes version
 - name: slack
   type: slack-notification
   source:
