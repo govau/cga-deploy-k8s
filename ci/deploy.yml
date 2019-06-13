@@ -6,6 +6,7 @@ image_resource:
     repository: govau/cga-cli
     tag: latest
 inputs:
+- name: amazon-vpc-cni-k8s
 - name: aws-servicebroker
 - name: charts
 - name: deploy-src

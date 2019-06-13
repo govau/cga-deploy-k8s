@@ -121,8 +121,32 @@ helm init --client-only
 # Update your local Helm chart repository cache
 helm repo update
 
-echo "Check all worker nodes are running the latest desired AMI"
+echo "Apply the desired version of amazon-vpc-cni-k8s if necessary"
+DESIRED_AMAZON_VPC_CNI_K8S_VERSION="$(cat ${SCRIPT_DIR}/../../amazon-vpc-cni-k8s/tag)"
+CURRENT_AMAZON_VPC_CNI_K8S_VERSION="$(kubectl describe daemonset aws-node --namespace kube-system | grep Image | cut -d "/" -f 2 | cut -d ":" -f 2)"
+if [[ ${CURRENT_AMAZON_VPC_CNI_K8S_VERSION} != ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION} ]]; then
+  echo "Updating amazon-vpc-cni-k8s from ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION} to ${CURRENT_AMAZON_VPC_CNI_K8S_VERSION}"
+  # The release source includes the config.yaml to apply to the cluster
+  # see https://github.com/aws/amazon-vpc-cni-k8s
+  pushd "${SCRIPT_DIR}/../../amazon-vpc-cni-k8s"
+    mkdir -p output
+    tar xvfz source.tar.gz --directory output --strip 1
 
+    MAJOR="$(echo ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION} | cut -d "." -f 1)"
+    MINOR="$(echo ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION} | cut -d "." -f 2)"
+    FILE=output/config/${MAJOR}.${MINOR}/aws-k8s-cni.yaml
+    echo "Will apply $FILE:"
+    cat $FILE
+    kubectl apply -f $FILE
+  popd
+
+  echo "Waiting for amazon vpc cni to be rolled out"
+  kubectl rollout status --namespace=kube-system --timeout=5m --watch daemonset/aws-node
+else
+  echo "amazon-vpc-cni-k8s is already the desired version: ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION}"
+fi
+
+echo "Ensure all worker nodes are running the desired AMI"
 LAUNCH_CONFIGURATION_NAME="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-worker-nodes --output json | jq -r .AutoScalingGroups[0].LaunchConfigurationName)"
 DESIRED_IMAGE_ID="$(aws autoscaling describe-launch-configurations --launch-configuration-names "${LAUNCH_CONFIGURATION_NAME}" --output json | jq -r .LaunchConfigurations[0].ImageId)"
 echo "DESIRED_IMAGE_ID ${DESIRED_IMAGE_ID}"
