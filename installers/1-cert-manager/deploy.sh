@@ -33,6 +33,13 @@ helm upgrade --install --wait --timeout 300 \
   --version v0.6.6 \
   cert-manager charts/stable/cert-manager
 
+echo "Waiting for all cert-manager deployments to start"
+DEPLOYMENTS="$(kubectl -n cert-manager get deployments -o json | jq -r .items[].metadata.name)"
+for DEPLOYMENT in $DEPLOYMENTS; do
+    kubectl rollout status --namespace=cert-manager --timeout=2m \
+        --watch deployment/${DEPLOYMENT}
+done
+
 echo "Installing cert issuers"
 kubectl -n cert-manager apply -f <(cat <<EOF
 apiVersion: certmanager.k8s.io/v1alpha1
