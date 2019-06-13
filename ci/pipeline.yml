@@ -1,5 +1,12 @@
 groups: []
 resources:
+- name: amazon-vpc-cni-k8s
+  type: github-release
+  icon: github-circle
+  source:
+    access_token: ((github-public-repo-personal-access-token))
+    owner: aws
+    repository: amazon-vpc-cni-k8s
 - name: aws-servicebroker
   type: github-release
   icon: github-circle
@@ -142,6 +149,9 @@ jobs:
   - k
   plan:
   - do:
+    - get: amazon-vpc-cni-k8s
+      include_source_tarball: true
+      trigger: true
     - get: aws-servicebroker
       trigger: true
     - get: ops
@@ -253,6 +263,8 @@ jobs:
   - l
   plan:
   - do:
+    - get: amazon-vpc-cni-k8s
+      include_source_tarball: true
     - get: aws-servicebroker
       passed:
       - deploy-k
