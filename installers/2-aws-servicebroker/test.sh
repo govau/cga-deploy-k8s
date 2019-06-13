@@ -84,37 +84,53 @@ kubectl -n ${NAMESPACE} delete servicebinding "${INSTANCE_NAME}-binding"
 kubectl -n ${NAMESPACE} delete --wait=false serviceinstance "${INSTANCE_NAME}"
 
 ############
-echo "Test aws-servicebroker redis class (will take a while)"
-INSTANCE_NAME="aws-sb-ci-test-${RANDOM}-redis"
+# echo "Test aws-servicebroker redis class (will take a while)"
+# This is currently commented out as it slows down the deploy, and we arent using redis regularly so
+# there's not really a need for it to be properly tested... yet
+# REDIS_INSTANCE_NAME="aws-sb-ci-test-${RANDOM}-redis"
 
-kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
-apiVersion: servicecatalog.k8s.io/v1beta1
-kind: ServiceInstance
-metadata:
-  name: "${INSTANCE_NAME}"
-spec:
-  clusterServiceClassExternalName: redis
-  clusterServicePlanExternalName: standard
-EOF
-)
+# kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
+# apiVersion: servicecatalog.k8s.io/v1beta1
+# kind: ServiceInstance
+# metadata:
+#   name: "${REDIS_INSTANCE_NAME}"
+# spec:
+#   clusterServiceClassExternalName: redis
+#   clusterServicePlanExternalName: standard
+# EOF
+# )
 
-echo "Wait for redis serviceinstance to be ready"
-kubectl -n "${NAMESPACE}" wait --for=condition=Ready --timeout=30m "ServiceInstance/${INSTANCE_NAME}"
+# echo "Wait for redis serviceinstance to be ready"
+# kubectl -n "${NAMESPACE}" wait --for=condition=Ready --timeout=30m "ServiceInstance/${REDIS_INSTANCE_NAME}"
 
-kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
-apiVersion: servicecatalog.k8s.io/v1beta1
-kind: ServiceBinding
-metadata:
-  name: ${INSTANCE_NAME}-binding
-spec:
-  instanceRef:
-    name: ${INSTANCE_NAME}
-EOF
-)
+# kubectl apply -n "${NAMESPACE}" -f <(cat <<EOF
+# apiVersion: servicecatalog.k8s.io/v1beta1
+# kind: ServiceBinding
+# metadata:
+#   name: ${REDIS_INSTANCE_NAME}-binding
+# spec:
+#   instanceRef:
+#     name: ${REDIS_INSTANCE_NAME}
+# EOF
+# )
 
-BINDING_JSON="$(kubectl -n ${NAMESPACE} get secret ${INSTANCE_NAME}-binding -o json)"
+# REDIS_BINDING_JSON="$(kubectl -n ${NAMESPACE} get secret ${REDIS_INSTANCE_NAME}-binding -o json)"
+# REDIS_HOSTNAME="$(echo ${REDIS_BINDING_JSON} | jq -r '.data.hostname' | base64 -d)"
+# REDIS_PORT="$(echo ${REDIS_BINDING_JSON} | jq -r '.data.port' | base64 -d)"
+# REDIS_PASSWORD="$(echo ${REDIS_BINDING_JSON} | jq -r '.data.password' | base64 -d)"
+# REDIS_SCHEME="$(echo ${REDIS_BINDING_JSON} | jq -r '.data.scheme' | base64 -d)"
+# REDIS_URL="$(echo ${REDIS_BINDING_JSON} | jq -r '.data.url' | base64 -d)"
 
-# cleanup
-kubectl -n ${NAMESPACE} delete servicebinding "${INSTANCE_NAME}-binding"
-kubectl -n ${NAMESPACE} delete --wait=false serviceinstance "${INSTANCE_NAME}"
+# # todo this doesnt work
+# # kubectl run --namespace ${NAMESPACE} redis --rm --restart='Never' \
+# #   --env REDIS_HOSTNAME=$REDIS_HOSTNAME \
+# #   --env REDIS_PORT=$REDIS_PORT \
+# #   --env REDIS_PASSWORD=$REDIS_PASSWORD \
+# #   --env REDIS_SCHEME=$REDIS_SCHEME \
+# #   --env REDIS_URL=$REDIS_URL \
+# #   --image redis -- bash -c "redis-cli set foo bar && redis=cli get foo"
+
+# # redis cleanup
+# kubectl -n ${NAMESPACE} delete servicebinding "${REDIS_INSTANCE_NAME}-binding"
+# kubectl -n ${NAMESPACE} delete --wait=false serviceinstance "${REDIS_INSTANCE_NAME}"
 
