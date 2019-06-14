@@ -266,6 +266,12 @@ jobs:
         text: |
           :x: :terraform: $BUILD_PIPELINE_NAME $BUILD_JOB_NAME FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+    on_success:
+      put: slack
+      params:
+        text: |
+          :white_check_mark: :terraform: $BUILD_PIPELINE_NAME $BUILD_JOB_NAME SUCCESS
+            <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
 - name: deploy-l
   serial_groups:
   - l
