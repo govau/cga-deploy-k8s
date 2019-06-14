@@ -228,6 +228,13 @@ jobs:
         text: |
           :x: :terraform: $BUILD_PIPELINE_NAME $BUILD_JOB_NAME FAILED
           <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+    on_success:
+      put: slack
+      params:
+        text: |
+          :thinking_face: :terraform: $BUILD_PIPELINE_NAME $BUILD_JOB_NAME needs review
+          <$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|View build details>
+        text_file: tfplan/message.txt
 - name: terraform-apply-l
   serial_groups:
   - l
