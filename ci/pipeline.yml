@@ -292,6 +292,8 @@ jobs:
     - get: amazon-vpc-cni-k8s
       params:
         include_source_tarball: true
+      passed:
+      - deploy-k
     - get: aws-servicebroker
       passed:
       - deploy-k
