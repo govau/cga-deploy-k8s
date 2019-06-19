@@ -48,8 +48,10 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
       terraform plan -input=false -out=${TFPLAN}
 
       set +e
-      terraform show ${TFPLAN} \
-        | grep -v "This plan does nothing." \
+      terraform show  -json ${TFPLAN} \
+        | jq '.resource_changes[].change.actions[] | select(. != "no-op")' \
+        | wc -l \
+        | grep -v 0 \
         > ${TFPLANS_BUCKET_DIR}/message.txt
       set -e
       exit 0
