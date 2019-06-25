@@ -16,6 +16,8 @@ pushd ${PATH_TO_OPS}/terraform/env/${ENV_NAME}-cld
 
   export TF_VAR_eks_worker_ami="not-used"
 
+  terraform refresh
+
   # Put our AWS creds into a credentials file
   # Add profile to assume role in the child aws account
   export AWS_ACCOUNT_ID="$(terraform output aws_account_id)"
