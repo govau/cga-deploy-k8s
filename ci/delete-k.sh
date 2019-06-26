@@ -115,6 +115,7 @@ EOF
     "aws_route53_zone.int_cld_subdomain" \
     "aws_vpc_peering_connection.to_mgmt" \
     "aws_vpc.platform" \
+    "data." \
     )
   terraform_cmd="terraform destroy -auto-approve -input=false"
   for resource in $resources; do
@@ -134,8 +135,14 @@ EOF
 
   echo terraform_cmd: $terraform_cmd
 
-  $terraform_cmd
+  # Only run if there are specific targets to destroy. Otherwise everything will get destroyed which
+  # is probably not what we want.
+  if [[ $terraform_cmd == *"-target"* ]]; then
+    $terraform_cmd
+  else
+    echo "Found no terraform resources to destroy"
+  fi
 
-  # todo delete all remaining persistentvolumes
+  # todo delete all remaining persistentvolumes?
 
 popd
