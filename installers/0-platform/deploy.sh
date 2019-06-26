@@ -130,7 +130,7 @@ if [[ ${CURRENT_AMAZON_VPC_CNI_K8S_VERSION} != ${DESIRED_AMAZON_VPC_CNI_K8S_VERS
   # see https://github.com/aws/amazon-vpc-cni-k8s
   pushd "${SCRIPT_DIR}/../../../amazon-vpc-cni-k8s"
     mkdir -p output
-    tar xvfz source.tar.gz --directory output --strip 1
+    tar xfz source.tar.gz --directory output --strip 1
 
     MAJOR="$(echo ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION} | cut -d "." -f 1)"
     MINOR="$(echo ${DESIRED_AMAZON_VPC_CNI_K8S_VERSION} | cut -d "." -f 2)"
